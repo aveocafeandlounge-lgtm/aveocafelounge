@@ -134,15 +134,6 @@ export default function POSPage() {
     }
   }, []);
 
-  const savePosTaxSettings = (rate: number, enabled: boolean) => {
-    try {
-      localStorage.setItem(defaultTaxRateStorageKey, String(rate));
-      localStorage.setItem(useDefaultTaxRateStorageKey, String(enabled));
-    } catch (error) {
-      console.error('Failed to save POS tax settings', error);
-    }
-  };
-
   // Filter navigation based on user role
   const filteredInternalNav = useMemo(
     () => internalNav.filter((item) => {
@@ -549,54 +540,6 @@ export default function POSPage() {
     if (!table) return;
     updateBill({ ...activeBill, table: table.name });
     setTableMenuOpen(false);
-  };
-
-  const createNewOrder = async () => {
-    if (!selectedTableForNewOrder) {
-      setStatusMessage('Please select a table.');
-      return;
-    }
-
-    if (selectedPaxForNewOrder < 1 || selectedPaxForNewOrder > 6) {
-      setStatusMessage('Number of pax must be between 1 and 6.');
-      return;
-    }
-
-    const selectedTable = tables.find((t) => t.id === selectedTableForNewOrder);
-    if (!selectedTable) {
-      setStatusMessage('Table not found.');
-      return;
-    }
-
-    // Check if table is already occupied
-    const tableOccupied = bills.some(
-      (bill) => bill.table === selectedTable.name && bill.status !== 'Served'
-    );
-
-    if (tableOccupied) {
-      setStatusMessage(`${selectedTable.name} is already occupied.`);
-      return;
-    }
-
-    const newBill = createEmptyBill(selectedTable.name, useDefaultTaxRate ? defaultTaxRate : 0);
-    newBill.notes = `Pax: ${selectedPaxForNewOrder}`;
-    
-    setBills((current) => [...current, newBill]);
-    setActiveBillId(newBill.id);
-    
-    if (hasFirebaseConfig) {
-      try {
-        await saveDocument('bills', newBill.id, newBill);
-      } catch (error) {
-        console.error('Failed to create new bill in Firestore:', error);
-        setStatusMessage('Order created locally but failed to persist to Firestore.');
-      }
-    }
-
-    setShowNewOrderModal(false);
-    setSelectedTableForNewOrder('');
-    setSelectedPaxForNewOrder(1);
-    setStatusMessage(`New order created for ${selectedTable.name} with ${selectedPaxForNewOrder} pax.`);
   };
 
 

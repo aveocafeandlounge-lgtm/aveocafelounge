@@ -121,7 +121,7 @@ export default function BillDetailsPage() {
   };
 
   return (
-    <AppShell title={bill?.billNumber ? `Bill ${bill.billNumber}` : 'Bill details'}>
+    <AppShell>
       <div className="mx-auto min-w-[1024px] max-w-[1700px] px-4 py-5 sm:px-6 lg:px-8">
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
