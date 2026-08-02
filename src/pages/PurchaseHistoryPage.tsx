@@ -133,7 +133,7 @@ export default function PurchaseHistoryPage() {
   );
 
   return (
-    <AppShell title="Purchase History">
+    <AppShell>
       <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
         {/* Search and Filters */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm h-fit lg:sticky lg:top-6">

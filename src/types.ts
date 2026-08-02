@@ -274,6 +274,8 @@ export interface AppSettings {
   taxRate: number;
   receiptFooter: string;
   supportEmail: string;
+  useDefaultTaxRate: boolean;
+  defaultTaxRate: number;
 }
 
 export interface SalesSeries {

@@ -55,7 +55,7 @@ export default function BillManagement() {
   );
 
   return (
-    <AppShell title="Bills management">
+    <AppShell>
       <div className="space-y-6">
         <div className="grid gap-5 xl:grid-cols-3">
           {[

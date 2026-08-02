@@ -280,14 +280,14 @@ export default function POSReports() {
 
   if (loading) {
     return (
-      <AppShell title="POS Reports">
+      <AppShell>
         <p>Loading reports…</p>
       </AppShell>
     );
   }
 
   return (
-    <AppShell title="POS Reports">
+    <AppShell>
       <div id="pos-reports-pdf-content" className="mb-6 space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-2">

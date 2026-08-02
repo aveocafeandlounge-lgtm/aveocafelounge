@@ -146,7 +146,7 @@ export default function CompletedBillsPage() {
   };
 
   return (
-    <AppShell title="Completed bills">
+    <AppShell>
       <div className="space-y-6">
         <div className="grid gap-5 xl:grid-cols-3">
           {[

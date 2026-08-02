@@ -195,7 +195,7 @@ export default function ExpensesPage() {
   };
 
   return (
-    <AppShell title="Expenses">
+    <AppShell>
       <div className="grid gap-6 xl:grid-cols-[0.95fr_0.85fr]">
         <section className="rounded-3xl border border-slate-200 bg-slate-50/70 p-6 shadow-2xl shadow-slate-300/20">
           <div className="mb-5 flex items-center justify-between gap-3">

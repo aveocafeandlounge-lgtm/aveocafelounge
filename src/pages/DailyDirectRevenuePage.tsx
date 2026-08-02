@@ -512,7 +512,7 @@ export default function DailyDirectRevenuePage() {
   };
 
   return (
-    <AppShell title="Daily direct revenue">
+    <AppShell>
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-6 flex items-center justify-between gap-3">

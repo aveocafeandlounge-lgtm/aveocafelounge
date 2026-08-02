@@ -295,7 +295,7 @@ export default function DirectPurchasePage() {
   }, [purchases]);
 
   return (
-    <AppShell title="Direct Purchase">
+    <AppShell>
       <div className="grid gap-6 xl:grid-cols-[0.85fr_1fr]">
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

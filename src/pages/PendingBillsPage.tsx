@@ -43,7 +43,7 @@ export default function PendingBillsPage() {
   const navigate = useNavigate();
 
   return (
-    <AppShell title="Pending bills">
+    <AppShell>
       <div className="space-y-6">
         <div className="grid gap-5 xl:grid-cols-3">
           {[

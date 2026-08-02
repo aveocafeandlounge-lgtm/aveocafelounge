@@ -12,6 +12,8 @@ const defaultSettings: AppSettings = {
   taxRate: 5,
   receiptFooter: 'Thank you for visiting Loavashi Hub. Please visit again!',
   supportEmail: 'support@loavashihub.com',
+  useDefaultTaxRate: false,
+  defaultTaxRate: 5,
 };
 
 export default function SettingsPage() {
@@ -44,7 +46,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <AppShell title="Settings">
+    <AppShell>
       <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-6 shadow-2xl shadow-slate-950/20">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -60,7 +62,7 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        <div className="grid gap-5">
+        <div className="flex flex-wrap items-center gap-2">
           <label className="block text-sm text-slate-300">
             Restaurant name
             <input
@@ -101,6 +103,25 @@ export default function SettingsPage() {
               type="email"
               value={settings.supportEmail}
               onChange={(event) => setSettings((current) => ({ ...current, supportEmail: event.target.value }))}
+              className="mt-2 w-full rounded-3xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none"
+            />
+          </label>
+          <label className="block text-sm text-slate-300">
+            Use default tax
+            <input
+              type="checkbox"
+              checked={settings.useDefaultTaxRate}
+              onChange={(event) => setSettings((current) => ({ ...current, useDefaultTaxRate: event.target.checked }))}
+              className="mt-2 h-4 w-4 rounded border-slate-700 bg-slate-950 text-violet-600 focus:ring-violet-500"
+            />
+          </label>
+          <label className="block text-sm text-slate-300">
+            Default tax rate (%)
+            <input
+              type="number"
+              min={0}
+              value={settings.defaultTaxRate}
+              onChange={(event) => setSettings((current) => ({ ...current, defaultTaxRate: Number(event.target.value) }))}
               className="mt-2 w-full rounded-3xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none"
             />
           </label>

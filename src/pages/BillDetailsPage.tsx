@@ -6,6 +6,8 @@ import { formatMVR } from '../lib/mvr';
 import { loadCollection, saveDocument, deleteDocument } from '../lib/firestore';
 import type { Bill } from '../types';
 
+const logo = '/logo.jpeg';
+
 export default function BillDetailsPage() {
   const { billId } = useParams();
   const [bill, setBill] = useState<Bill | null>(null);
@@ -273,7 +275,14 @@ export default function BillDetailsPage() {
           ) : null}
 
           <div className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
-            <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm print:shadow-none">
+            {/* Print Header - Only visible when printing */}
+            <div className="hidden print:block print:mb-6 print:text-center">
+              <img src={logo} alt="Loavashi Hub" className="print:mx-auto print:h-16 print:w-16 print:rounded-full print:border" />
+              <h1 className="print:mt-2 print:text-xl print:font-bold print:text-slate-900">Loavashi Hub</h1>
+              <p className="print:text-sm print:text-slate-600">Cafe & Restaurant</p>
+            </div>
+
+            <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm print:shadow-none print:border-none">
               {loading ? (
                 <p className="text-slate-500">Loading bill details…</p>
               ) : !bill ? (
@@ -345,7 +354,7 @@ export default function BillDetailsPage() {
               )}
             </section>
 
-            <aside className="space-y-6 rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm print:shadow-none">
+            <aside className="space-y-6 rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm print:shadow-none print:border-none print:p-0">
               <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                 <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Totals</p>
                 <div className="mt-4 space-y-3 text-slate-700">

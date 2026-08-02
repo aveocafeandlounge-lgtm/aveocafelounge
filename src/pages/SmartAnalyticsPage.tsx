@@ -185,7 +185,7 @@ export default function SmartAnalyticsPage() {
   }, [purchaseAnalytics, productTrends]);
 
   return (
-    <AppShell title="Smart Analytics">
+    <AppShell>
       <div className="space-y-6">
         {/* Header with Time Range Selector */}
         <div className="flex items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-6 shadow-2xl shadow-slate-300/20">

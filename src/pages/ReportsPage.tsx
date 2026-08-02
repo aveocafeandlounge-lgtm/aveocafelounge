@@ -805,7 +805,7 @@ export default function ReportsPage() {
   const visibleProductMetrics = !showCustomReport || customFilter.includeMetrics.products;
 
   return (
-    <AppShell title="Reports & analytics">
+    <AppShell>
       <div id="pdf-content" className="space-y-8">
         {/* Header with export buttons */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

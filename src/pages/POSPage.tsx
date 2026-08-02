@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search,
   Grid as GridIcon,
@@ -13,6 +13,10 @@ import {
   ArrowRight,
   Pause,
   Trash2,
+  Plus,
+  Minus,
+  Printer,
+  Divide,
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
@@ -28,6 +32,8 @@ const defaultCustomer: Partial<Customer> = {
   email: '',
   notes: '',
 };
+
+const logo = '/logo.jpeg';
 
 const internalNav = [
   { path: '/pos', label: 'Home', icon: Home },
@@ -96,6 +102,12 @@ export default function POSPage() {
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
   const [defaultTaxRate, setDefaultTaxRate] = useState(0);
   const [useDefaultTaxRate, setUseDefaultTaxRate] = useState(false);
+  const [splitBillOpen, setSplitBillOpen] = useState(false);
+  const [splitBills, setSplitBills] = useState<Bill[]>([]);
+  const [draggedItem, setDraggedItem] = useState<{ item: OrderItem; sourceBillId: string } | null>(null);
+  const [quantityPromptOpen, setQuantityPromptOpen] = useState(false);
+  const [targetBillId, setTargetBillId] = useState('');
+  const [quantityToMove, setQuantityToMove] = useState(1);
   const [quickItemName, setQuickItemName] = useState('');
   const [quickItemPrice, setQuickItemPrice] = useState<number | ''>('');
   const [quickItemQty, setQuickItemQty] = useState<number>(1);
@@ -224,6 +236,96 @@ export default function POSPage() {
       items: activeBill.items.filter((item) => item.id !== itemId),
     };
     updateBill(updatedBill);
+  };
+
+  const updateItemQuantity = (itemId: string, newQuantity: number) => {
+    if (!activeBill || newQuantity < 1) return;
+    const updatedBill: Bill = {
+      ...activeBill,
+      items: activeBill.items.map((item) =>
+        item.id === itemId ? { ...item, quantity: newQuantity } : item,
+      ),
+    };
+    updateBill(updatedBill);
+  };
+
+  const printCurrentBill = () => {
+    if (!activeBill) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const subtotal = activeBill.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const taxAmount = Math.round((subtotal * (activeBill.tax ?? 0)) / 100);
+    const total = subtotal + taxAmount;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Bill - ${activeBill.billNumber || activeBill.title}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; max-width: 300px; margin: 0 auto; }
+          .header { text-align: center; margin-bottom: 20px; }
+          .logo { width: 60px; height: 60px; border-radius: 50%; border: 2px solid #333; }
+          .cafe-name { font-size: 18px; font-weight: bold; margin-top: 10px; }
+          .cafe-subtitle { font-size: 12px; color: #666; }
+          .bill-info { margin-bottom: 15px; border-bottom: 1px dashed #ccc; padding-bottom: 10px; }
+          .bill-info p { margin: 5px 0; font-size: 12px; }
+          .items { margin-bottom: 15px; }
+          .item { display: flex; justify-content: space-between; margin: 8px 0; font-size: 12px; }
+          .item-name { flex: 1; }
+          .item-qty { margin-right: 10px; }
+          .item-price { text-align: right; }
+          .totals { border-top: 1px dashed #ccc; padding-top: 10px; }
+          .total-row { display: flex; justify-content: space-between; margin: 5px 0; font-size: 12px; }
+          .total-row.final { font-weight: bold; font-size: 14px; margin-top: 10px; }
+          .footer { text-align: center; margin-top: 20px; font-size: 10px; color: #666; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <img src="${logo}" alt="Loavashi Hub" class="logo" />
+          <div class="cafe-name">Loavashi Hub</div>
+          <div class="cafe-subtitle">Cafe & Restaurant</div>
+        </div>
+        <div class="bill-info">
+          <p><strong>Bill:</strong> ${activeBill.billNumber || activeBill.title}</p>
+          <p><strong>Table:</strong> ${activeBill.table}</p>
+          <p><strong>Date:</strong> ${new Date(activeBill.createdAt).toLocaleString()}</p>
+          <p><strong>Type:</strong> ${activeBill.orderType}</p>
+        </div>
+        <div class="items">
+          ${activeBill.items.map(item => `
+            <div class="item">
+              <span class="item-name">${item.name}</span>
+              <span class="item-qty">${item.quantity}x</span>
+              <span class="item-price">${formatMVR(item.price * item.quantity)}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div class="totals">
+          <div class="total-row">
+            <span>Subtotal:</span>
+            <span>${formatMVR(subtotal)}</span>
+          </div>
+          <div class="total-row">
+            <span>Tax (${activeBill.tax || 0}%):</span>
+            <span>${formatMVR(taxAmount)}</span>
+          </div>
+          <div class="total-row final">
+            <span>TOTAL:</span>
+            <span>${formatMVR(total)}</span>
+          </div>
+        </div>
+        <div class="footer">
+          <p>Thank you for dining with us!</p>
+          <p>${new Date().getFullYear()} Loavashi Hub</p>
+        </div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
   };
 
   const assignCustomer = (customerId: string) => {
@@ -524,110 +626,79 @@ export default function POSPage() {
   );
 
   return (
-    <AppShell title="Restro POS">
+    <AppShell>
       {/* Top Navigation Bar */}
-      <nav className="sticky top-0 z-50 flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 md:px-4 py-3 shadow-md">
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg md:text-xl font-bold text-green-600">mPOS</h1>
+      <nav className="sticky top-0 z-50 flex flex-col gap-2 md:gap-3 border-b border-slate-200 bg-white px-3 md:px-4 py-3 shadow-md">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg md:text-xl font-bold text-green-600">Loavashi Hub</h1>
+          </div>
+          <div className="flex items-center gap-2 md:gap-3 flex-shrink-0 overflow-x-auto">
+            {filteredInternalNav.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.label}
+                  to={item.path}
+                  className={({ isActive }) =>
+                    `flex flex-col items-center gap-1 rounded-2xl px-2 md:px-3 py-2 md:py-2 text-center whitespace-nowrap transition flex-shrink-0 border-2 ${
+                      isActive
+                        ? 'border-green-500 bg-green-50 text-green-900 font-semibold'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`
+                  }
+                >
+                  <Icon className="h-4 w-4 md:h-5 md:w-5" />
+                  <span className="text-[8px] md:text-[9px] uppercase tracking-widest font-semibold">{item.label}</span>
+                </NavLink>
+              );
+            })}
+          </div>
         </div>
-        <div className="flex items-center gap-2 md:gap-3 flex-shrink-0 overflow-x-auto">
-          {filteredInternalNav.slice(0, 4).map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.label}
-                to={item.path}
-                className={({ isActive }) =>
-                  `flex flex-col items-center gap-1 rounded-2xl px-2 md:px-3 py-2 md:py-2 text-center whitespace-nowrap transition flex-shrink-0 border-2 ${
-                    isActive
-                      ? 'border-green-500 bg-green-50 text-green-900 font-semibold'
-                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`
-                }
-              >
-                <Icon className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-[8px] md:text-[9px] uppercase tracking-widest font-semibold">{item.label}</span>
-              </NavLink>
-            );
-          })}
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
+          <div className="flex-1 min-w-[150px]">
+            <div className="relative rounded-[24px] border border-slate-200 bg-slate-50 px-3 md:px-4 py-2 md:py-2">
+              <Search className="absolute left-3 md:left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                ref={searchInputRef}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Scan item..."
+                className="w-full bg-transparent pl-8 md:pl-10 text-xs md:text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400"
+              />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowNewOrderModal(true)}
+            className="inline-flex items-center gap-2 rounded-[20px] bg-green-500 px-2 md:px-3 py-2 md:py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-green-600"
+          >
+            <GridIcon className="h-3 w-3 md:h-4 md:w-4" />
+            New Order
+          </button>
+          <button
+            type="button"
+            onClick={() => setTableMenuOpen((current) => !current)}
+            className="inline-flex items-center gap-2 rounded-[20px] bg-green-500 px-2 md:px-3 py-2 md:py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-green-600"
+          >
+            <GridIcon className="h-3 w-3 md:h-4 md:w-4" />
+            Scan
+          </button>
         </div>
+
+        {statusMessage ? (
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 px-3 md:px-4 py-2 md:py-2 text-xs text-slate-900">
+            {statusMessage}
+          </div>
+        ) : null}
       </nav>
 
       <div className="mx-auto w-full px-3 md:px-4 py-3 md:py-4">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-3 md:gap-4 min-h-[calc(100vh-280px)]">
           <main className="flex flex-col gap-3 md:gap-4">
-            <section className="rounded-[28px] bg-white p-3 md:p-4 shadow-sm border border-slate-200">
-              <div className="flex flex-col gap-2 md:gap-3">
-                <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                  <div className="flex-1 min-w-[150px]">
-                    <div className="relative rounded-[24px] border border-slate-200 bg-slate-50 px-3 md:px-4 py-2 md:py-2">
-                      <Search className="absolute left-3 md:left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <input
-                        ref={searchInputRef}
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                        placeholder="Scan item..."
-                        className="w-full bg-transparent pl-8 md:pl-10 text-xs md:text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400"
-                      />
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowNewOrderModal(true)}
-                    className="inline-flex items-center gap-2 rounded-[20px] bg-green-500 px-2 md:px-3 py-2 md:py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-green-600"
-                  >
-                    <GridIcon className="h-3 w-3 md:h-4 md:w-4" />
-                    New Order
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTableMenuOpen((current) => !current)}
-                    className="inline-flex items-center gap-2 rounded-[20px] bg-green-500 px-2 md:px-3 py-2 md:py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-green-600"
-                  >
-                    <GridIcon className="h-3 w-3 md:h-4 md:w-4" />
-                    Scan
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <label className="inline-flex items-center gap-2 rounded-[24px] border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800">
-                    <input
-                      type="checkbox"
-                      checked={useDefaultTaxRate}
-                      onChange={(event) => {
-                        const enabled = event.target.checked;
-                        setUseDefaultTaxRate(enabled);
-                        savePosTaxSettings(defaultTaxRate, enabled);
-                      }}
-                      className="h-4 w-4 rounded border-slate-300 text-green-600 focus:ring-green-500"
-                    />
-                    Use default tax
-                  </label>
-                  <label className="inline-flex items-center gap-2 rounded-[24px] border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800">
-                    <span>Default %</span>
-                    <input
-                      type="number"
-                      value={defaultTaxRate}
-                      min="0"
-                      max="100"
-                      onChange={(event) => {
-                        const next = Number(event.target.value);
-                        setDefaultTaxRate(next);
-                        savePosTaxSettings(next, useDefaultTaxRate);
-                      }}
-                      className="w-16 rounded-2xl border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-900 outline-none"
-                    />
-                  </label>
-                </div>
-
-                {statusMessage ? (
-                  <div className="rounded-3xl border border-slate-200 bg-slate-50 px-3 md:px-4 py-2 md:py-2 text-xs text-slate-900">
-                    {statusMessage}
-                  </div>
-                ) : null}
-
-                {/* New Order Modal */}
-                {showNewOrderModal ? (
+            <section className="">
+              {/* New Order Modal */}
+              {showNewOrderModal ? (
                   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
                     <div className="rounded-[28px] bg-white p-4 md:p-6 shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
                       <div className="flex items-center justify-between gap-3 mb-4">
@@ -672,104 +743,97 @@ export default function POSPage() {
                             </div>
                           ) : (
                             <div className="rounded-[16px] border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
-                              All tables are currently occupied.
+                              No tables available. Add tables in Table Management first.
                             </div>
                           )}
                         </div>
 
                         {/* Pax Selection */}
-                        {selectedTableForNewOrder && (
-                          <div>
-                            <label className="block text-xs font-semibold text-slate-900 mb-2">
-                              Number of Pax (1-6)
-                            </label>
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedPaxForNewOrder((p) => Math.max(1, p - 1))}
-                                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-green-300 bg-green-500 text-white hover:bg-green-600 font-semibold"
-                              >
-                                −
-                              </button>
-                              <div className="flex-1">
-                                <select
-                                  value={selectedPaxForNewOrder}
-                                  onChange={(e) => setSelectedPaxForNewOrder(parseInt(e.target.value))}
-                                  className="w-full rounded-[12px] border border-slate-300 bg-white px-3 py-2 text-center text-sm font-semibold text-slate-900 outline-none"
-                                >
-                                  {[1, 2, 3, 4, 5, 6].map((num) => (
-                                    <option key={num} value={num}>
-                                      {num} {num === 1 ? 'Person' : 'People'}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setSelectedPaxForNewOrder((p) => Math.min(6, p + 1))}
-                                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-green-300 bg-green-500 text-white hover:bg-green-600 font-semibold"
-                              >
-                                +
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-900 mb-2">
+                            Number of Guests
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max={selectedTableForNewOrder ? tables.find((t) => t.id === selectedTableForNewOrder)?.seats || 10 : 10}
+                            value={selectedPaxForNewOrder}
+                            onChange={(event) => setSelectedPaxForNewOrder(Number(event.target.value))}
+                            className="w-full rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none"
+                          />
+                        </div>
 
-                        {/* Create Order Button */}
-                        <button
-                          type="button"
-                          onClick={createNewOrder}
-                          disabled={!selectedTableForNewOrder}
-                          className={`w-full rounded-[16px] px-4 py-3 text-sm font-semibold text-white transition ${
-                            selectedTableForNewOrder
-                              ? 'bg-green-500 hover:bg-green-600 shadow-lg'
-                              : 'bg-slate-300 cursor-not-allowed'
-                          }`}
-                        >
-                          Create Order & Add Items
-                        </button>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowNewOrderModal(false);
+                              setSelectedTableForNewOrder('');
+                              setSelectedPaxForNewOrder(1);
+                            }}
+                            className="rounded-[28px] border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!selectedTableForNewOrder) {
+                                setStatusMessage('Please select a table.');
+                                return;
+                              }
+                              const table = tables.find((t) => t.id === selectedTableForNewOrder);
+                              if (!table) return;
+                              const newBill = createEmptyBill(table.name, useDefaultTaxRate ? defaultTaxRate : 0);
+                              setBills((current) => [...current, newBill]);
+                              setActiveBillId(newBill.id);
+                              setShowNewOrderModal(false);
+                              setSelectedTableForNewOrder('');
+                              setSelectedPaxForNewOrder(1);
+                              setStatusMessage(`New order created for ${table.name} with ${selectedPaxForNewOrder} guests.`);
+                            }}
+                            disabled={!selectedTableForNewOrder}
+                            className="inline-flex items-center justify-center rounded-[28px] bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-lg hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                          >
+                            Create Order
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
                 ) : null}
 
-                {statusMessage ? (
-                  <div className="rounded-3xl border border-slate-200 bg-slate-50 px-3 md:px-4 py-2 md:py-2 text-xs text-slate-900">
-                    {statusMessage}
-                  </div>
-                ) : null}
-
-                {tableMenuOpen ? (
-                  <div className="grid gap-2 rounded-[24px] border border-slate-200 bg-slate-50 p-2 md:p-3">
-                    <label className="block text-xs text-slate-600">
-                      Assign table
-                      <select
-                        value={tables.find((table) => table.name === activeBill?.table)?.id ?? ''}
-                        onChange={(event) => selectTable(event.target.value)}
-                        className="mt-1 w-full rounded-[18px] border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none"
-                      >
-                        <option value="">Select a table</option>
-                        {tables.map((table) => (
-                          <option key={table.id} value={table.id}>
-                            {table.name} • {table.section}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <div className="rounded-[20px] border border-slate-300 bg-white p-2 md:p-3 text-xs text-slate-600">
-                      <p className="font-semibold text-slate-900">Current table</p>
-                      <p className="mt-1">{activeBill?.table || 'Not assigned'}</p>
-                    </div>
-                  </div>
-                ) : null}
+            {/* Table Menu */}
+            {tableMenuOpen ? (
+              <div className="grid gap-2 rounded-[24px] border border-slate-200 bg-slate-50 p-2 md:p-3">
+                <label className="block text-xs text-slate-600">
+                  Assign table
+                  <select
+                    value={tables.find((table) => table.name === activeBill?.table)?.id ?? ''}
+                    onChange={(event) => selectTable(event.target.value)}
+                    className="mt-1 w-full rounded-[18px] border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none"
+                  >
+                    <option value="">Select a table</option>
+                    {tables.map((table) => (
+                      <option key={table.id} value={table.id}>
+                        {table.name} � {table.section}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="rounded-[20px] border border-slate-300 bg-white p-2 md:p-3 text-xs text-slate-600">
+                  <p className="font-semibold text-slate-900">Current table</p>
+                  <p className="mt-1">{activeBill?.table || 'Not assigned'}</p>
+                </div>
               </div>
+            ) : null}
             </section>
 
             {/* Occupied Tables Section */}
             {bills.filter((bill) => bill.status !== 'Served').length > 0 && (
               <section className="rounded-[24px] border-2 border-red-400 bg-red-50 p-3 md:p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <p className="text-xs md:text-sm font-bold text-red-600">🔴 OCCUPIED TABLES: {bills.filter((bill) => bill.status !== 'Served').length}</p>
+                  <p className="text-xs md:text-sm font-bold text-red-600">?? OCCUPIED TABLES: {bills.filter((bill) => bill.status !== 'Served').length}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {bills
@@ -919,7 +983,7 @@ export default function POSPage() {
                             {quickPresets.map((p) => (
                               <div key={p.id} className="flex items-center gap-2">
                                 <button onClick={() => addPresetToBill(p)} className="rounded-md bg-slate-100 px-3 py-2 text-xs font-semibold hover:bg-slate-200">
-                                  {p.name} • {formatMVR(p.price)} x{p.qty}
+                                  {p.name} � {formatMVR(p.price)} x{p.qty}
                                 </button>
                                 <button onClick={() => removePreset(p.id)} className="text-red-500 p-1" title="Remove preset">
                                   <Trash2 className="h-4 w-4" />
@@ -959,12 +1023,240 @@ export default function POSPage() {
                             addPreset(quickItemName.trim(), Number(quickItemPrice), quickItemQty);
                           }
                           addQuickItemToBill();
-                        }} className="flex-1 rounded-lg bg-green-500 px-3 py-2 text-sm font-semibold text-white hover:bg-green-600">Add to Bill</button>
+                        }} className="flex-1 rounded-lg bg-green-500 px-3 py-2 text-sm font-semibold text-white hover:bg-green-600">Add</button>
                       </div>
                     </div>
                   </div>
                 </div>
               ) : null}
+
+              {/* Split Bill Modal */}
+              {splitBillOpen && activeBill ? (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                  <div className="rounded-[20px] bg-green-50 p-4 md:p-6 shadow-2xl max-w-4xl w-full border-2 border-green-200 max-h-[90vh] overflow-y-auto">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-green-900">Split Bill</h3>
+                      <button onClick={() => setSplitBillOpen(false)} className="text-green-600 hover:text-green-800">
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newBill = createEmptyBill(activeBill.table + ' Split', activeBill.tax);
+                            setSplitBills([...splitBills, newBill]);
+                          }}
+                          className="flex-1 rounded-lg bg-green-500 px-3 py-2 text-sm font-semibold text-white hover:bg-green-600"
+                        >
+                          + Add New Bill
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {splitBills.map((bill) => (
+                          <div
+                            key={bill.id}
+                            className="bg-white rounded-lg p-3 border-2 border-green-200 min-h-[200px]"
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (draggedItem) {
+                                const { item, sourceBillId } = draggedItem;
+                                if (sourceBillId !== bill.id) {
+                                  if (item.quantity > 1) {
+                                    setTargetBillId(bill.id);
+                                    setQuantityToMove(1);
+                                    setQuantityPromptOpen(true);
+                                  } else {
+                                    // Remove from source bill immediately
+                                    const sourceBill = splitBills.find(b => b.id === sourceBillId);
+                                    if (sourceBill) {
+                                      const updatedSource = {
+                                        ...sourceBill,
+                                        items: sourceBill.items.filter(i => i.id !== item.id)
+                                      };
+                                      setSplitBills(prev => prev.map(b => b.id === sourceBillId ? updatedSource : b));
+                                    }
+                                    // Add to target bill immediately
+                                    const updatedTarget = {
+                                      ...bill,
+                                      items: [...bill.items, item]
+                                    };
+                                    setSplitBills(prev => prev.map(b => b.id === bill.id ? updatedTarget : b));
+                                  }
+                                }
+                                setDraggedItem(null);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-semibold text-green-900">{bill.title || 'New Bill'}</span>
+                              <span className="text-xs text-green-700">
+                                {formatMVR(bill.items.reduce((sum, item) => sum + item.price * item.quantity, 0))}
+                              </span>
+                            </div>
+                            <div className="space-y-1">
+                              {bill.items.map((item) => (
+                                <div
+                                  key={item.id}
+                                  draggable
+                                  onDragStart={() => setDraggedItem({ item, sourceBillId: bill.id })}
+                                  className="bg-green-50 rounded p-2 cursor-move hover:bg-green-100 border border-green-200 relative"
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updatedBill = {
+                                        ...bill,
+                                        items: bill.items.filter(i => i.id !== item.id)
+                                      };
+                                      setSplitBills(prev => prev.map(b => b.id === bill.id ? updatedBill : b));
+                                    }}
+                                    className="absolute top-1 right-1 text-red-500 hover:text-red-700 p-1"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                  <div className="flex items-center justify-between pr-4">
+                                    <span className="text-xs font-medium text-green-900">{item.name}</span>
+                                    <span className="text-xs text-green-700">×{item.quantity}</span>
+                                  </div>
+                                  <div className="text-xs text-green-600">{formatMVR(item.price * item.quantity)}</div>
+                                </div>
+                              ))}
+                              {bill.items.length === 0 && (
+                                <div className="text-center text-xs text-green-400 py-4">
+                                  Drop items here
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button onClick={() => setSplitBillOpen(false)} className="flex-1 rounded-lg bg-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-400">Cancel</button>
+                        <button onClick={() => {
+                          // Save all split bills that have items
+                          const billsWithItems = splitBills.filter(bill => bill.items.length > 0);
+                          setBills(prev => {
+                            const billsWithoutOriginal = prev.filter(b => b.id !== activeBill.id);
+                            return [...billsWithoutOriginal, ...billsWithItems];
+                          });
+                          setActiveBillId('');
+                          setStatusMessage(`Bill split into ${billsWithItems.length} separate bills`);
+                          setSplitBillOpen(false);
+                        }} className="flex-1 rounded-lg bg-green-500 px-3 py-2 text-sm font-semibold text-white hover:bg-green-600">Save Split Bills</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Quantity Prompt Modal */}
+              {quantityPromptOpen && draggedItem && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                  <div className="rounded-[20px] bg-green-50 p-4 md:p-6 shadow-2xl max-w-sm w-full border-2 border-green-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-green-900">Move Quantity</h3>
+                      <button onClick={() => setQuantityPromptOpen(false)} className="text-green-600 hover:text-green-800">
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="bg-white rounded-lg p-3 border border-green-200">
+                        <p className="text-sm font-medium text-green-900">{draggedItem.item.name}</p>
+                        <p className="text-xs text-green-700">Available: {draggedItem.item.quantity}</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-green-800 mb-2">Quantity to move</label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setQuantityToMove(Math.max(1, quantityToMove - 1))}
+                            className="rounded-lg bg-green-200 px-3 py-2 text-sm font-semibold hover:bg-green-300 text-green-900"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="text-xl font-bold text-green-900 w-12 text-center">{quantityToMove}</span>
+                          <button
+                            type="button"
+                            onClick={() => setQuantityToMove(Math.min(draggedItem.item.quantity, quantityToMove + 1))}
+                            className="rounded-lg bg-green-200 px-3 py-2 text-sm font-semibold hover:bg-green-300 text-green-900"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button onClick={() => setQuantityPromptOpen(false)} className="flex-1 rounded-lg bg-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-400">Cancel</button>
+                        <button onClick={() => {
+                          if (!draggedItem) return;
+                          const { item, sourceBillId } = draggedItem;
+                          
+                          // Update source bill with functional state update
+                          setSplitBills(prev => {
+                            const sourceBill = prev.find(b => b.id === sourceBillId);
+                            if (!sourceBill) return prev;
+                            
+                            const remainingQty = item.quantity - quantityToMove;
+                            let updatedSource;
+                            if (remainingQty <= 0) {
+                              updatedSource = {
+                                ...sourceBill,
+                                items: sourceBill.items.filter(i => i.id !== item.id)
+                              };
+                            } else {
+                              updatedSource = {
+                                ...sourceBill,
+                                items: sourceBill.items.map(i => 
+                                  i.id === item.id 
+                                    ? { ...i, quantity: remainingQty }
+                                    : i
+                                )
+                              };
+                            }
+                            return prev.map(b => b.id === sourceBillId ? updatedSource : b);
+                          });
+
+                          // Update target bill with functional state update
+                          setSplitBills(prev => {
+                            const targetBill = prev.find(b => b.id === targetBillId);
+                            if (!targetBill) return prev;
+                            
+                            const existingItem = targetBill.items.find(i => i.id === item.id);
+                            let updatedTarget;
+                            if (existingItem) {
+                              updatedTarget = {
+                                ...targetBill,
+                                items: targetBill.items.map(i =>
+                                  i.id === item.id
+                                    ? { ...i, quantity: i.quantity + quantityToMove }
+                                    : i
+                                )
+                              };
+                            } else {
+                              updatedTarget = {
+                                ...targetBill,
+                                items: [...targetBill.items, { ...item, quantity: quantityToMove }]
+                              };
+                            }
+                            return prev.map(b => b.id === targetBillId ? updatedTarget : b);
+                          });
+
+                          setQuantityPromptOpen(false);
+                          setDraggedItem(null);
+                        }} className="flex-1 rounded-lg bg-green-500 px-3 py-2 text-sm font-semibold text-white hover:bg-green-600">Move</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2 rounded-[20px] border border-slate-200 bg-white p-2 md:p-3">
@@ -973,14 +1265,36 @@ export default function POSPage() {
               </div>
               <div className="space-y-1.5 max-h-[240px] overflow-y-auto">
                 {activeBill?.items.map((item) => (
-                  <div key={item.id} className="rounded-[12px] border border-slate-200 bg-slate-50 p-1.5 flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-slate-900 truncate">{item.name}</p>
-                      <p className="text-[10px] text-slate-500">{formatMVR(item.price * item.quantity)}</p>
+                  <div key={item.id} className="rounded-[12px] border border-slate-200 bg-slate-50 p-1.5">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs font-semibold text-slate-900 truncate flex-1">{item.name}</p>
+                      <button type="button" onClick={() => removeItem(item.id)} className="ml-1 text-slate-400 hover:text-slate-600">
+                        <X className="h-3 w-3" />
+                      </button>
                     </div>
-                    <button type="button" onClick={() => removeItem(item.id)} className="ml-1 text-slate-400 hover:text-slate-600">
-                      <X className="h-3 w-3" />
-                    </button>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
+                          className="w-5 h-5 flex items-center justify-center rounded bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <span className="text-xs font-medium text-slate-900 w-6 text-center">{item.quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
+                          className="w-5 h-5 flex items-center justify-center rounded bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-slate-500">{formatMVR(item.price)} � {item.quantity}</p>
+                        <p className="text-xs font-semibold text-slate-900">{formatMVR(item.price * item.quantity)}</p>
+                      </div>
+                    </div>
                   </div>
                 ))}
                 {!activeBill?.items.length && (
@@ -1079,6 +1393,29 @@ export default function POSPage() {
         >
           <Pause className="h-4 w-4" />
           Hold
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (activeBill) {
+              setSplitBills([activeBill]);
+              setSplitBillOpen(true);
+            }
+          }}
+          disabled={!activeBill || !activeBill.items.length}
+          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0 disabled:bg-slate-300 disabled:border-slate-300 disabled:cursor-not-allowed"
+        >
+          <Divide className="h-4 w-4" />
+          Split Bill
+        </button>
+        <button
+          type="button"
+          onClick={printCurrentBill}
+          disabled={!activeBill || !activeBill.items.length}
+          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0 disabled:bg-slate-300 disabled:border-slate-300 disabled:cursor-not-allowed"
+        >
+          <Printer className="h-4 w-4" />
+          Print
         </button>
         <button
           type="button"

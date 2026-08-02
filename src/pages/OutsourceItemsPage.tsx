@@ -520,7 +520,7 @@ export default function OutsourceItemsPage() {
   };
 
   return (
-    <AppShell title="Outsource Items">
+    <AppShell>
       <div className="space-y-6">
         {firestoreError ? (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">

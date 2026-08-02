@@ -351,7 +351,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <AppShell title="Dashboard">
+    <AppShell>
       <div className="space-y-6 text-[#05093f]">
         {/* KPI Cards with Growth Indicators */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
