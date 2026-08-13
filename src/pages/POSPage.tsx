@@ -17,6 +17,8 @@ import {
   Minus,
   Printer,
   Divide,
+  Maximize,
+  Minimize,
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
@@ -121,7 +123,34 @@ export default function POSPage() {
   const [showPrintConfirmation, setShowPrintConfirmation] = useState(false);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [billToPrint, setBillToPrint] = useState<Bill | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => {
+        setIsFullscreen(true);
+      }).catch((err) => {
+        console.error('Error attempting to enable fullscreen:', err);
+      });
+    } else {
+      document.exitFullscreen().then(() => {
+        setIsFullscreen(false);
+      }).catch((err) => {
+        console.error('Error attempting to exit fullscreen:', err);
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
   const navigate = useNavigate();
   const defaultTaxRateStorageKey = 'posDefaultTaxRate';
   const useDefaultTaxRateStorageKey = 'posUseDefaultTaxRate';
@@ -731,6 +760,15 @@ export default function POSPage() {
                 </NavLink>
               );
             })}
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="flex flex-col items-center gap-1 rounded-2xl px-2 md:px-3 py-2 md:py-2 text-center whitespace-nowrap transition flex-shrink-0 border-2 border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+            >
+              {isFullscreen ? <Minimize className="h-4 w-4 md:h-5 md:w-5" /> : <Maximize className="h-4 w-4 md:h-5 md:w-5" />}
+              <span className="text-[8px] md:text-[9px] uppercase tracking-widest font-semibold">{isFullscreen ? 'Exit' : 'Full'}</span>
+            </button>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 md:gap-3">
