@@ -118,6 +118,9 @@ export default function POSPage() {
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [selectedTableForNewOrder, setSelectedTableForNewOrder] = useState<string>('');
   const [selectedPaxForNewOrder, setSelectedPaxForNewOrder] = useState(1);
+  const [showPrintConfirmation, setShowPrintConfirmation] = useState(false);
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [billToPrint, setBillToPrint] = useState<Bill | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const defaultTaxRateStorageKey = 'posDefaultTaxRate';
@@ -508,6 +511,12 @@ export default function POSPage() {
       return;
     }
 
+    setShowPrintConfirmation(true);
+  };
+
+  const handlePrintConfirmation = async (print: boolean) => {
+    if (!activeBill) return;
+
     const savedBill: Bill = {
       ...activeBill,
       status: 'Pending',
@@ -520,8 +529,134 @@ export default function POSPage() {
     // Clear the active bill - user must create new order explicitly
     setActiveBillId('');
 
+    setShowPrintConfirmation(false);
+
+    if (print) {
+      setBillToPrint(savedBill);
+      setShowPrintPreview(true);
+    } else {
+      setStatusMessage('Order saved as an open bill. Create a new order to continue.');
+      navigate('/bills/pending');
+    }
+  };
+
+  const closePrintPreview = () => {
+    setShowPrintPreview(false);
     setStatusMessage('Order saved as an open bill. Create a new order to continue.');
     navigate('/bills/pending');
+  };
+
+  const printBill = () => {
+    if (!billToPrint) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to print the bill');
+      return;
+    }
+
+    const itemsHtml = billToPrint.items.map(item => 
+      `<div style="display: flex; justify-content: space-between; padding: 4px 0;">
+        <span>${item.name} x${item.quantity}</span>
+        <span>${formatMVR(item.price * item.quantity)}</span>
+      </div>`
+    ).join('');
+
+    const total = billToPrint.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Bill - ${billToPrint.billNumber}</title>
+        <style>
+          body {
+            font-family: monospace;
+            font-size: 12px;
+            width: 80mm;
+            margin: 0;
+            padding: 10px;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 10px;
+          }
+          .logo {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin-bottom: 5px;
+          }
+          .section {
+            border-top: 1px dashed #000;
+            padding-top: 5px;
+            margin-top: 10px;
+          }
+          .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+          }
+          .total {
+            font-weight: bold;
+            font-size: 14px;
+          }
+          .qr {
+            width: 80px;
+            height: 80px;
+            margin: 10px auto;
+            display: block;
+          }
+          .center {
+            text-align: center;
+          }
+          @media print {
+            body {
+              width: 80mm;
+              margin: 0;
+            }
+            @page {
+              margin: 0;
+              size: 80mm auto;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <img src="/logo.jpeg" alt="Logo" class="logo" />
+          <h3>Loavashi Hub</h3>
+          <p>Restaurant Management System</p>
+        </div>
+        <div class="section">
+          <div class="row"><strong>Bill #:</strong> ${billToPrint.billNumber}</div>
+          <div class="row"><strong>Table:</strong> ${billToPrint.table}</div>
+          <div class="row"><strong>Date:</strong> ${new Date(billToPrint.createdAt).toLocaleString()}</div>
+        </div>
+        <div class="section">
+          ${itemsHtml}
+        </div>
+        <div class="section">
+          <div class="row total"><strong>Total:</strong> ${formatMVR(total)}</div>
+        </div>
+        <div class="section center">
+          <p><strong>Payment Details</strong></p>
+          <p>BML Account: 7730000865890</p>
+        </div>
+        <div class="section center">
+          <img src="/qr code.PNG" alt="QR Code" class="qr" />
+          <p>Scan to Pay</p>
+        </div>
+      </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.onload = () => {
+      printWindow.print();
+      printWindow.close();
+      closePrintPreview();
+    };
   };
 
   const payable = useMemo(() => {
@@ -1200,6 +1335,107 @@ export default function POSPage() {
                   </div>
                 </div>
               )}
+
+              {/* Print Confirmation Modal */}
+              {showPrintConfirmation && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                  <div className="rounded-[20px] bg-white p-4 md:p-6 shadow-2xl max-w-sm w-full">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-slate-900">Print Receipt?</h3>
+                      <button onClick={() => setShowPrintConfirmation(false)} className="text-slate-500 hover:text-slate-700">
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+                    <p className="text-sm text-slate-600 mb-6">Would you like to print the receipt for this order?</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => handlePrintConfirmation(false)} className="flex-1 rounded-lg bg-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-400">No</button>
+                      <button onClick={() => handlePrintConfirmation(true)} className="flex-1 rounded-lg bg-green-500 px-3 py-2 text-sm font-semibold text-white hover:bg-green-600">Yes</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Print Preview Modal */}
+              {showPrintPreview && billToPrint && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                  <div className="rounded-[20px] bg-white p-4 md:p-6 shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+                    <div className="flex items-center justify-between mb-4 no-print">
+                      <h3 className="text-lg font-semibold text-slate-900">Print Preview</h3>
+                      <button onClick={() => setShowPrintPreview(false)} className="text-slate-500 hover:text-slate-700">
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+                    <div className="bg-white p-4 rounded-lg mb-4 font-mono text-xs border border-slate-300" id="print-bill">
+                      <div className="text-center mb-4">
+                        <img src="/logo.jpeg" alt="Loavashi Hub" className="h-16 w-16 mx-auto mb-2 rounded-full" />
+                        <h4 className="font-bold text-sm">Loavashi Hub</h4>
+                        <p className="text-slate-600">Restaurant Management System</p>
+                      </div>
+                      <div className="border-t border-slate-300 pt-2 mb-2">
+                        <p><strong>Bill #:</strong> {billToPrint.billNumber}</p>
+                        <p><strong>Table:</strong> {billToPrint.table}</p>
+                        <p><strong>Date:</strong> {new Date(billToPrint.createdAt).toLocaleString()}</p>
+                      </div>
+                      <div className="border-t border-slate-300 pt-2 mb-2">
+                        {billToPrint.items.map((item) => (
+                          <div key={item.id} className="flex justify-between py-1">
+                            <span>{item.name} x{item.quantity}</span>
+                            <span>{formatMVR(item.price * item.quantity)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="border-t border-slate-300 pt-2 mb-2">
+                        <div className="flex justify-between font-bold">
+                          <span>Total</span>
+                          <span>{formatMVR(billToPrint.items.reduce((sum, item) => sum + item.price * item.quantity, 0))}</span>
+                        </div>
+                      </div>
+                      <div className="border-t border-slate-300 pt-2 mt-4">
+                        <p className="text-center text-slate-600 mb-2">Payment Details</p>
+                        <p className="text-center"><strong>BML Account:</strong> 7730000865890</p>
+                      </div>
+                      <div className="border-t border-slate-300 pt-2 mt-4 text-center">
+                        <img src="/qr code.PNG" alt="QR Code" className="h-24 w-24 mx-auto" />
+                        <p className="text-slate-600 mt-2">Scan to Pay</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 no-print">
+                      <button onClick={closePrintPreview} className="flex-1 rounded-lg bg-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-400">Close</button>
+                      <button onClick={printBill} className="flex-1 rounded-lg bg-green-500 px-3 py-2 text-sm font-semibold text-white hover:bg-green-600">Print</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <style>{`
+                @media print {
+                  * {
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                  }
+                  body > *:not(#print-bill) {
+                    display: none !important;
+                  }
+                  #print-bill {
+                    display: block !important;
+                    position: fixed !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                    margin: 0 !important;
+                    padding: 10mm !important;
+                    background: white !important;
+                    z-index: 9999 !important;
+                  }
+                  .no-print {
+                    display: none !important;
+                  }
+                  @page {
+                    margin: 0;
+                    size: 80mm auto;
+                  }
+                }
+              `}</style>
             </div>
 
             <div className="space-y-2 rounded-[20px] border border-slate-200 bg-white p-2 md:p-3">
@@ -1295,7 +1531,7 @@ export default function POSPage() {
         <button
           type="button"
           onClick={() => setShowQuickAddModal(true)}
-          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-green-500 border-2 border-green-500 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-green-600 flex-shrink-0"
+          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
         >
           <GridIcon className="h-4 w-4" />
           Speed Key
@@ -1303,21 +1539,21 @@ export default function POSPage() {
         <button
           type="button"
           onClick={() => setShowQuickAddModal(true)}
-          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-green-500 border-2 border-green-500 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-green-600 flex-shrink-0"
+          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
         >
           Quick Add
         </button>
         <button
           type="button"
           onClick={() => setStatusMessage('Department management coming soon.')}
-          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-green-500 border-2 border-green-500 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-green-600 flex-shrink-0"
+          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
         >
           Depts
         </button>
         <button
           type="button"
           onClick={() => navigate('/bills/pending')}
-          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-green-500 border-2 border-green-500 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-green-600 flex-shrink-0"
+          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
         >
           <ShoppingCart className="h-4 w-4" />
           Orders
@@ -1325,14 +1561,14 @@ export default function POSPage() {
         <button
           type="button"
           onClick={() => setStatusMessage('Table orders filter coming soon.')}
-          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-green-500 border-2 border-green-500 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-green-600 flex-shrink-0"
+          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
         >
           Table Orders
         </button>
         <button
           type="button"
           onClick={holdOrder}
-          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-green-500 border-2 border-green-500 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-green-600 flex-shrink-0"
+          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
         >
           <Pause className="h-4 w-4" />
           Hold
@@ -1363,7 +1599,7 @@ export default function POSPage() {
         <button
           type="button"
           onClick={voidBill}
-          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-red-600 border-2 border-red-600 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-red-700 flex-shrink-0"
+          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
         >
           Void
         </button>
@@ -1379,28 +1615,28 @@ export default function POSPage() {
             updateBill(updatedBill);
             setStatusMessage(`${lastItem.name} removed as no sale.`);
           }}
-          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-yellow-600 border-2 border-yellow-600 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-yellow-700 flex-shrink-0"
+          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
         >
           No Sales
         </button>
         <button
           type="button"
           onClick={processRefund}
-          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-purple-600 border-2 border-purple-600 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-purple-700 flex-shrink-0"
+          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
         >
           Refund
         </button>
         <button
           type="button"
           onClick={() => setStatusMessage('Select items to check prices.')}
-          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-blue-600 border-2 border-blue-600 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-blue-700 flex-shrink-0"
+          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
         >
           Price Check
         </button>
         <button
           type="button"
           onClick={goBack}
-          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-500 border-2 border-slate-500 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-600 flex-shrink-0"
+          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
         >
           <ArrowRight className="h-4 w-4" />
           BACK
