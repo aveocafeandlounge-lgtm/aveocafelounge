@@ -243,7 +243,7 @@ export interface OrderItem {
 
 export interface Bill {
   id: string;
-  billNumber?: string;
+  billNumber: string;
   title: string;
   table: string;
   seat?: string;
