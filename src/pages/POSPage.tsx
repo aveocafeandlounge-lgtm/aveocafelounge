@@ -2,13 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search,
   Grid as GridIcon,
-  Home,
-  Users2,
-  Table,
-  CreditCard,
   ShoppingCart,
-  BarChart3,
-  Settings,
   X,
   ArrowRight,
   Pause,
@@ -20,7 +14,7 @@ import {
   Maximize,
   Minimize,
 } from 'lucide-react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { useAuth } from '../context/AuthContext';
 import { formatMVR } from '../lib/mvr';
@@ -36,16 +30,6 @@ const defaultCustomer: Partial<Customer> = {
 };
 
 const logo = '/logo.jpeg';
-
-const internalNav = [
-  { path: '/pos', label: 'Home', icon: Home },
-  { path: '/customers', label: 'Customers', icon: Users2 },
-  { path: '/admin/tables', label: 'Tables', icon: Table },
-  { path: '/bills/pending', label: 'Cashier', icon: CreditCard },
-  { path: '/bills/pending', label: 'Orders', icon: ShoppingCart },
-  { path: '/admin/reports', label: 'Reports', icon: BarChart3 },
-  { path: '/settings', label: 'Settings', icon: Settings },
-];
 
 function generateBillNumber(tableName: string) {
   const now = new Date();
@@ -165,17 +149,6 @@ export default function POSPage() {
       console.error('Failed to load POS tax settings', error);
     }
   }, []);
-
-  // Filter navigation based on user role
-  const filteredInternalNav = useMemo(
-    () => internalNav.filter((item) => {
-      if (item.label === 'Tables' && user?.role !== 'admin') {
-        return false;
-      }
-      return true;
-    }),
-    [user?.role]
-  );
 
   const categories = useMemo(
     () => ['All', ...Array.from(new Set(products.map((product) => product.category)))],
@@ -601,61 +574,77 @@ export default function POSPage() {
         <style>
           body {
             font-family: monospace;
-            font-size: 12px;
-            width: 80mm;
+            font-size: 42px;
+            width: 300mm;
             margin: 0;
-            padding: 10px;
+            padding: 45px;
           }
           .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 45px;
+          }
+          .header-left {
+            flex: 0 0 auto;
+          }
+          .header-center {
+            flex: 1;
             text-align: center;
-            margin-bottom: 10px;
+          }
+          .header-right {
+            flex: 0 0 auto;
           }
           .logo {
-            width: 60px;
-            height: 60px;
+            width: 180px;
+            height: 180px;
             border-radius: 50%;
-            margin-bottom: 5px;
+          }
+          .qr {
+            width: 180px;
+            height: 180px;
           }
           .section {
             border-top: 1px dashed #000;
-            padding-top: 5px;
-            margin-top: 10px;
+            padding-top: 24px;
+            margin-top: 45px;
           }
           .row {
             display: flex;
             justify-content: space-between;
-            padding: 2px 0;
+            padding: 12px 0;
           }
           .total {
             font-weight: bold;
-            font-size: 14px;
-          }
-          .qr {
-            width: 80px;
-            height: 80px;
-            margin: 10px auto;
-            display: block;
+            font-size: 54px;
           }
           .center {
             text-align: center;
           }
           @media print {
             body {
-              width: 80mm;
+              width: 300mm;
               margin: 0;
             }
             @page {
               margin: 0;
-              size: 80mm auto;
+              size: 300mm auto;
             }
           }
         </style>
       </head>
       <body>
         <div class="header">
-          <img src="/logo.jpeg" alt="Logo" class="logo" />
-          <h3>Loavashi Hub</h3>
-          <p>Restaurant Management System</p>
+          <div class="header-left">
+            <img src="/logo.jpeg" alt="Logo" class="logo" />
+          </div>
+          <div class="header-center">
+            <h3>Loavashi Hub</h3>
+            <p>Restaurant Management System</p>
+          </div>
+          <div class="header-right">
+            <img src="/qr code.PNG" alt="QR Code" class="qr" />
+          </div>
         </div>
         <div class="section">
           <div class="row"><strong>Bill #:</strong> ${billToPrint.billNumber}</div>
@@ -671,10 +660,6 @@ export default function POSPage() {
         <div class="section center">
           <p><strong>Payment Details</strong></p>
           <p>BML Account: 7730000865890</p>
-        </div>
-        <div class="section center">
-          <img src="/qr code.PNG" alt="QR Code" class="qr" />
-          <p>Scan to Pay</p>
         </div>
       </body>
       </html>
@@ -734,44 +719,16 @@ export default function POSPage() {
 
   return (
     <AppShell>
-      {/* Top Navigation Bar */}
-      <nav className="sticky top-0 z-50 flex flex-col gap-2 md:gap-3 border-b border-slate-200 bg-white px-3 md:px-4 py-3 shadow-md">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg md:text-xl font-bold text-green-600">Loavashi Hub</h1>
+      <div className="mx-auto w-full px-3 md:px-4 py-3 md:py-4">
+        {/* Status Message */}
+        {statusMessage ? (
+          <div className="mb-3 rounded-3xl border border-slate-200 bg-slate-50 px-3 md:px-4 py-2 md:py-2 text-xs text-slate-900">
+            {statusMessage}
           </div>
-          <div className="flex items-center gap-2 md:gap-3 flex-shrink-0 overflow-x-auto">
-            {filteredInternalNav.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.label}
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `flex flex-col items-center gap-1 rounded-2xl px-2 md:px-3 py-2 md:py-2 text-center whitespace-nowrap transition flex-shrink-0 border-2 ${
-                      isActive
-                        ? 'border-green-500 bg-green-50 text-green-900 font-semibold'
-                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                    }`
-                  }
-                >
-                  <Icon className="h-4 w-4 md:h-5 md:w-5" />
-                  <span className="text-[8px] md:text-[9px] uppercase tracking-widest font-semibold">{item.label}</span>
-                </NavLink>
-              );
-            })}
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="flex flex-col items-center gap-1 rounded-2xl px-2 md:px-3 py-2 md:py-2 text-center whitespace-nowrap transition flex-shrink-0 border-2 border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-            >
-              {isFullscreen ? <Minimize className="h-4 w-4 md:h-5 md:w-5" /> : <Maximize className="h-4 w-4 md:h-5 md:w-5" />}
-              <span className="text-[8px] md:text-[9px] uppercase tracking-widest font-semibold">{isFullscreen ? 'Exit' : 'Full'}</span>
-            </button>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 md:gap-3">
+        ) : null}
+
+        {/* Search and Action Bar */}
+        <div className="mb-3 flex flex-wrap items-center gap-2 md:gap-3">
           <div className="flex-1 min-w-[150px]">
             <div className="relative rounded-[24px] border border-slate-200 bg-slate-50 px-3 md:px-4 py-2 md:py-2">
               <Search className="absolute left-3 md:left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -800,16 +757,16 @@ export default function POSPage() {
             <GridIcon className="h-3 w-3 md:h-4 md:w-4" />
             Scan
           </button>
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="inline-flex items-center gap-2 rounded-[20px] bg-slate-900 px-2 md:px-3 py-2 md:py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-slate-700"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+          >
+            {isFullscreen ? <Minimize className="h-3 w-3 md:h-4 md:w-4" /> : <Maximize className="h-3 w-3 md:h-4 md:w-4" />}
+            {isFullscreen ? 'Exit' : 'Full'}
+          </button>
         </div>
-
-        {statusMessage ? (
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 px-3 md:px-4 py-2 md:py-2 text-xs text-slate-900">
-            {statusMessage}
-          </div>
-        ) : null}
-      </nav>
-
-      <div className="mx-auto w-full px-3 md:px-4 py-3 md:py-4">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-3 md:gap-4 min-h-[calc(100vh-280px)]">
           <main className="flex flex-col gap-3 md:gap-4">
             <section className="">
@@ -991,16 +948,16 @@ export default function POSPage() {
               })}
             </section>
 
-            <section className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 md:gap-3 overflow-y-auto max-h-[60vh]">
+            <section className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 md:gap-3 overflow-y-auto max-h-[60vh]">
               {filteredProducts.length ? (
                 filteredProducts.slice(0, 20).map((product) => (
-                  <article key={product.id} className="rounded-[20px] border-2 border-green-400 bg-white p-2 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                  <article key={product.id} className="rounded-[20px] border-2 border-green-400 bg-white p-0 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                     <button type="button" onClick={() => handleAddItem(product)} className="flex h-full w-full flex-col items-center gap-1 md:gap-2 text-center">
                       <div className="flex h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 items-center justify-center rounded-full bg-slate-100">
                         <img src={product.image} alt={product.name} className="h-10 w-10 sm:h-12 sm:w-12 md:h-16 md:w-16 rounded-full object-cover" />
                       </div>
                       <div className="space-y-0.5">
-                        <p className="text-[11px] md:text-xs font-semibold text-slate-900 line-clamp-1">{product.name}</p>
+                        <p className="text-[13px] md:text-sm font-bold text-slate-900 line-clamp-1">{product.name}</p>
                         {product.nameBn ? <p className="text-[10px] md:text-[11px] text-slate-500">{product.nameBn}</p> : null}
                         <p className="text-[8px] md:text-[10px] text-slate-500">{product.category}</p>
                       </div>
@@ -1397,17 +1354,23 @@ export default function POSPage() {
               {showPrintPreview && billToPrint && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
                   <div className="rounded-[20px] bg-white p-4 md:p-6 shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-                    <div className="flex items-center justify-between mb-4 no-print">
-                      <h3 className="text-lg font-semibold text-slate-900">Print Preview</h3>
+                    <div className="flex justify-end mb-4 no-print">
                       <button onClick={() => setShowPrintPreview(false)} className="text-slate-500 hover:text-slate-700">
                         <X className="h-5 w-5" />
                       </button>
                     </div>
                     <div className="bg-white p-4 rounded-lg mb-4 font-mono text-xs border border-slate-300" id="print-bill">
-                      <div className="text-center mb-4">
-                        <img src="/logo.jpeg" alt="Loavashi Hub" className="h-16 w-16 mx-auto mb-2 rounded-full" />
-                        <h4 className="font-bold text-sm">Loavashi Hub</h4>
-                        <p className="text-slate-600">Restaurant Management System</p>
+                      <div className="flex justify-between items-center mb-4">
+                        <div className="flex-0">
+                          <img src="/logo.jpeg" alt="Loavashi Hub" className="h-12 w-12 rounded-full" />
+                        </div>
+                        <div className="flex-1 text-center">
+                          <h4 className="font-bold text-sm">Loavashi Hub</h4>
+                          <p className="text-slate-600 text-xs">Restaurant Management System</p>
+                        </div>
+                        <div className="flex-0">
+                          <img src="/qr code.PNG" alt="QR Code" className="h-12 w-12" />
+                        </div>
                       </div>
                       <div className="border-t border-slate-300 pt-2 mb-2">
                         <p><strong>Bill #:</strong> {billToPrint.billNumber}</p>
@@ -1431,10 +1394,6 @@ export default function POSPage() {
                       <div className="border-t border-slate-300 pt-2 mt-4">
                         <p className="text-center text-slate-600 mb-2">Payment Details</p>
                         <p className="text-center"><strong>BML Account:</strong> 7730000865890</p>
-                      </div>
-                      <div className="border-t border-slate-300 pt-2 mt-4 text-center">
-                        <img src="/qr code.PNG" alt="QR Code" className="h-24 w-24 mx-auto" />
-                        <p className="text-slate-600 mt-2">Scan to Pay</p>
                       </div>
                     </div>
                     <div className="flex gap-2 no-print">

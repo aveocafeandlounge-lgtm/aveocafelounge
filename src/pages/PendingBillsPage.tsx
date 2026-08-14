@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, Clock } from 'lucide-react';
+import { CheckCircle2, Clock, ShoppingCart } from 'lucide-react';
 import AppShell from '../components/AppShell';
 import { loadCollection, saveDocument, deleteDocument } from '../lib/firestore';
 import { formatMVR } from '../lib/mvr';
@@ -45,6 +45,20 @@ export default function PendingBillsPage() {
   return (
     <AppShell>
       <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-[#05093f]">Pending Bills</h2>
+            <p className="text-sm text-[#05093f]">View and manage all open bills</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/pos')}
+            className="inline-flex items-center gap-2 rounded-3xl bg-green-600 px-4 py-3 text-sm font-semibold text-white hover:bg-green-700"
+          >
+            <ShoppingCart className="h-4 w-4" />
+            Go to POS
+          </button>
+        </div>
         <div className="grid gap-5 xl:grid-cols-3">
           {[
             { label: 'Open bills', value: openBills.length, icon: Clock },

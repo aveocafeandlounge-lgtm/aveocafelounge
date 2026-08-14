@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { LogOut, LayoutDashboard, ShoppingCart, ShoppingBag, Coffee, Table, Users2, ClipboardList, Box, Layers, BookOpen, BarChart3, Clock, CheckCircle2, ListChecks, X, DollarSign, Package, Brain, History, Wine } from 'lucide-react';
+import { LogOut, LayoutDashboard, ShoppingCart, ShoppingBag, Coffee, Table, Users2, ClipboardList, Box, Layers, BookOpen, BarChart3, Clock, CheckCircle2, ListChecks, X, DollarSign, Package, Brain, History, Wine, Menu } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 const logo = '/logo.jpeg';
 
@@ -102,81 +102,21 @@ export default function AppShell({ children }: AppShellProps) {
       </aside>
 
       <div className="min-h-screen flex flex-col">
-        <div className="sticky top-0 z-50 flex items-center gap-2 md:gap-3 flex-shrink-0 overflow-x-auto border-b border-slate-200 bg-white px-3 md:px-4 py-3 shadow-md">
-          {user?.role === 'cashier' && (
-            <>
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setSidebarOpen(false)}
-                    className={({ isActive }) =>
-                      `flex items-center gap-1 rounded-2xl px-2 md:px-3 py-2 md:py-2 text-center whitespace-nowrap transition flex-shrink-0 border-2 ${
-                        isActive
-                          ? 'border-green-500 bg-green-50 text-green-900 font-semibold'
-                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                      }`
-                    }
-                  >
-                    <Icon className="h-4 w-4 md:h-5 md:w-5" />
-                    <span className="text-[8px] md:text-[9px] uppercase tracking-widest font-semibold">{item.label}</span>
-                  </NavLink>
-                );
-              })}
-              <button
-                type="button"
-                onClick={logout}
-                className="flex items-center gap-1 rounded-2xl px-2 md:px-3 py-2 md:py-2 text-center whitespace-nowrap transition flex-shrink-0 border-2 border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              >
-                <LogOut className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-[8px] md:text-[9px] uppercase tracking-widest font-semibold">Sign out</span>
-              </button>
-            </>
-          )}
-        </div>
-
-        <main className="flex-1 px-4 sm:px-6 md:px-8">
+        <main className="flex-1 px-4 sm:px-6 md:px-8 relative">
+          {/* Floating hamburger menu button */}
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="fixed top-4 left-4 z-50 p-3 rounded-full bg-white border border-slate-200 shadow-lg hover:bg-slate-50 transition"
+            aria-label="Open menu"
+          >
+            <Menu className="h-6 w-6 text-slate-700" />
+          </button>
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             {children}
           </div>
         </main>
-
-        <footer className="border-t border-slate-200 bg-white/70 px-4 py-4 text-slate-600 md:px-8">
-          <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <img src={logo} alt="Loavashi Hub" className="h-10 w-10 rounded-full border border-slate-200 object-cover" />
-              <div>
-                <p className="text-sm font-semibold text-slate-900">Loavashi Hub</p>
-                <p className="text-xs text-slate-500">Cafe management for POS, inventory, purchases and operations.</p>
-              </div>
-            </div>
-            <p className="text-xs text-slate-500">Built for Maldivian restaurant workflows · {new Date().getFullYear()}</p>
-          </div>
-        </footer>
       </div>
-
-      <nav className="fixed bottom-0 left-0 right-0 z-20 mx-auto flex max-w-4xl items-center justify-around bg-white px-4 py-3 shadow-t md:hidden">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) =>
-                `flex flex-col items-center gap-1 text-xs transition ${
-                  isActive ? 'text-[rgb(22_163_74)]' : 'text-[#05093f] hover:text-[#05093f]/80'
-                }`
-              }
-            >
-              <Icon className="h-5 w-5 text-current" />
-              <span>{item.label}</span>
-            </NavLink>
-          );
-        })}
-      </nav>
     </div>
   );
 }
