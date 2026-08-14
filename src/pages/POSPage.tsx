@@ -2276,7 +2276,9 @@ export default function POSPage() {
 
                         if (hasFirebaseConfig) {
                           try {
-                            await saveDineAndGoCustomer(newCustomer.id, newCustomer);
+                            if (newCustomer.id) {
+                              await saveDineAndGoCustomer(newCustomer.id, newCustomer);
+                            }
                           } catch (error) {
                             console.error('Failed to save dine-and-go customer:', error);
                           }
