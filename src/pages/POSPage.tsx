@@ -1690,7 +1690,7 @@ export default function POSPage() {
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-900">Order ({activeBill?.items.length ?? 0})</p>
               </div>
-              <div className="space-y-1.5 max-h-[240px] overflow-y-auto">
+              <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
                 {activeBill?.items.map((item) => (
                   <div key={item.id} className="rounded-[12px] border border-slate-200 bg-slate-50 p-1.5">
                     <div className="flex items-center justify-between mb-1">
