@@ -255,10 +255,11 @@ export interface Bill {
   tax: number;
   status: 'Pending' | 'Preparing' | 'Ready' | 'Served';
   notes: string;
-  paymentMethod: 'Cash' | 'Card' | 'Bank transfer';
+  paymentMethod: 'Cash' | 'Card' | 'Bank transfer' | 'Dine-and-Go';
   paymentStatus: 'Unpaid' | 'Partial' | 'Paid';
   cashGiven?: number;
   change?: number;
+  dineAndGoCustomerId?: string;
   createdAt: string;
 }
 

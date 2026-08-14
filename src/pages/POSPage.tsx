@@ -19,7 +19,9 @@ import AppShell from '../components/AppShell';
 import { formatMVR } from '../lib/mvr';
 import { hasFirebaseConfig } from '../lib/firebase';
 import { loadCollection, saveDocument } from '../lib/firestore';
+import { loadDineAndGoCustomers, saveDineAndGoCustomer } from '../lib/firestore';
 import type { Bill, Customer, MenuItem, OrderItem, TableItem } from '../types';
+import type { DineAndGoCustomer } from '../types/dineAndGo';
 
 const defaultCustomer: Partial<Customer> = {
   name: '',
@@ -125,13 +127,20 @@ export default function POSPage() {
   const [selectedSeatForNewOrder, setSelectedSeatForNewOrder] = useState('S1');
   const [selectedOrderType, setSelectedOrderType] = useState<'Dine-in' | 'Takeaway'>('Dine-in');
   const [selectedPaxForNewOrder, setSelectedPaxForNewOrder] = useState(1);
+  const [selectedDineAndGoCustomer, setSelectedDineAndGoCustomer] = useState<string>('');
+  const [dineAndGoCustomers, setDineAndGoCustomers] = useState<DineAndGoCustomer[]>([]);
   const [showPrintConfirmation, setShowPrintConfirmation] = useState(false);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [billToPrint, setBillToPrint] = useState<Bill | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer' | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer' | 'dineandgo' | null>(null);
   const [cashGiven, setCashGiven] = useState('');
+  const [showConvertToDineAndGoModal, setShowConvertToDineAndGoModal] = useState(false);
+  const [convertBillId, setConvertBillId] = useState<string>('');
+  const [newDineAndGoName, setNewDineAndGoName] = useState('');
+  const [newDineAndGoTable, setNewDineAndGoTable] = useState('');
+  const [newDineAndGoCompany, setNewDineAndGoCompany] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const toggleFullscreen = () => {
@@ -190,16 +199,18 @@ export default function POSPage() {
     }
 
     try {
-      const [loadedProducts, loadedTables, loadedBills, loadedCustomers] = await Promise.all([
+      const [loadedProducts, loadedTables, loadedBills, loadedCustomers, loadedDineAndGoCustomers] = await Promise.all([
         loadCollection<MenuItem>('menuItems', []),
         loadCollection<TableItem>('tables', []),
         loadCollection<Bill>('bills', []),
         loadCollection<Customer>('customers', []),
+        loadDineAndGoCustomers(),
       ]);
 
       setProducts(loadedProducts);
       setTables(loadedTables);
       setCustomers(loadedCustomers);
+      setDineAndGoCustomers(loadedDineAndGoCustomers);
 
       // Filter out empty bills and do not auto-select any bill on load
       const billsWithItems = loadedBills.filter((bill) => bill.items.length > 0);
@@ -261,6 +272,28 @@ export default function POSPage() {
       ),
     };
     updateBill(updatedBill);
+  };
+
+  const chargeToDineAndGo = async (customerId: string, bill: Bill) => {
+    const customer = dineAndGoCustomers.find((c) => c.id === customerId);
+    if (!customer) return;
+
+    const billTotal = bill.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    const updated: DineAndGoCustomer = {
+      ...customer,
+      runningTotal: (customer.runningTotal ?? 0) + billTotal,
+    };
+
+    setDineAndGoCustomers((cur) => cur.map((c) => (c.id === customerId ? updated : c)));
+    
+    if (hasFirebaseConfig) {
+      try {
+        await saveDineAndGoCustomer(customerId, updated);
+      } catch (error) {
+        console.error('Failed to charge dine-and-go customer:', error);
+      }
+    }
   };
 
   const printCurrentBill = () => {
@@ -858,7 +891,7 @@ export default function POSPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         if (selectedOrderType === 'Takeaway') {
                           const newBill = createEmptyBill('Takeaway', '', bills, 'Takeaway', useDefaultTaxRate ? defaultTaxRate : 0);
                           setBills((current) => [...current, newBill]);
@@ -868,10 +901,17 @@ export default function POSPage() {
                               console.error('Failed to save takeaway bill:', error);
                             });
                           }
+                          
+                          // Handle dine-and-go customer
+                          if (selectedDineAndGoCustomer) {
+                            await chargeToDineAndGo(selectedDineAndGoCustomer, newBill);
+                          }
+                          
                           setShowNewOrderModal(false);
                           setSelectedTableForNewOrder('');
                           setSelectedSeatForNewOrder('S1');
                           setSelectedPaxForNewOrder(1);
+                          setSelectedDineAndGoCustomer('');
                         } else {
                           if (!selectedTableForNewOrder) {
                             return;
@@ -891,10 +931,17 @@ export default function POSPage() {
                               console.error('Failed to save dine-in bill:', error);
                             });
                           }
+                          
+                          // Handle dine-and-go customer
+                          if (selectedDineAndGoCustomer) {
+                            await chargeToDineAndGo(selectedDineAndGoCustomer, newBill);
+                          }
+                          
                           setShowNewOrderModal(false);
                           setSelectedTableForNewOrder('');
                           setSelectedSeatForNewOrder('S1');
                           setSelectedPaxForNewOrder(1);
+                          setSelectedDineAndGoCustomer('');
                         }
                       }}
                       disabled={selectedOrderType === 'Dine-in' && !selectedTableForNewOrder}
@@ -997,6 +1044,32 @@ export default function POSPage() {
                           onChange={(e) => setSelectedPaxForNewOrder(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
                           className="w-full rounded-[18px] border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none"
                         />
+                      </div>
+
+                      {/* Dine-and-Go Customer Selection */}
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-900 mb-2">
+                          Dine-and-Go Customer (Optional)
+                        </label>
+                        <select
+                          value={selectedDineAndGoCustomer}
+                          onChange={(e) => setSelectedDineAndGoCustomer(e.target.value)}
+                          className="w-full rounded-[18px] border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none"
+                        >
+                          <option value="">None (Regular Order)</option>
+                          {dineAndGoCustomers.map((customer) => (
+                            <option key={customer.id} value={customer.id}>
+                              {customer.name || 'Unnamed'} - {customer.table || 'No Table'} ({customer.company || 'No Company'})
+                            </option>
+                          ))}
+                        </select>
+                        {selectedDineAndGoCustomer && (
+                          <div className="mt-2 rounded-lg bg-blue-50 p-2 border border-blue-200">
+                            <p className="text-xs text-blue-700">
+                              Order will be charged to dine-and-go account
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1952,6 +2025,22 @@ export default function POSPage() {
               >
                 📱 Bank Transfer
               </button>
+              {activeBill?.dineAndGoCustomerId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentMethod('dineandgo');
+                    setCashGiven('');
+                  }}
+                  className={`w-full rounded-[16px] border-2 px-4 py-3 text-sm font-semibold transition ${
+                    paymentMethod === 'dineandgo'
+                      ? 'border-blue-600 bg-blue-600 text-white'
+                      : 'border-slate-200 bg-white text-slate-900 hover:border-blue-600'
+                  }`}
+                >
+                  📋 Dine-and-Go Payment
+                </button>
+              )}
             </div>
 
             {paymentMethod === 'cash' && (
@@ -1985,6 +2074,19 @@ export default function POSPage() {
               <button
                 type="button"
                 onClick={() => {
+                  if (activeBill) {
+                    setConvertBillId(activeBill.id);
+                    setShowConvertToDineAndGoModal(true);
+                    setShowPaymentModal(false);
+                  }
+                }}
+                className="flex-1 rounded-[16px] bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                Convert to Dine-and-Go
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
                   if (!paymentMethod) {
                     return;
                   }
@@ -2006,6 +2108,47 @@ export default function POSPage() {
                       setShowPaymentModal(false);
                       setPaymentMethod(null);
                       setCashGiven('');
+                    }
+                  } else if (paymentMethod === 'dineandgo') {
+                    // Process dine-and-go payment
+                    if (activeBill && activeBill.dineAndGoCustomerId) {
+                      const customer = dineAndGoCustomers.find(c => c.id === activeBill.dineAndGoCustomerId);
+                      if (customer) {
+                        const newBalance = Math.max(0, (customer.runningTotal ?? 0) - payable);
+                        const updated: DineAndGoCustomer = {
+                          ...customer,
+                          runningTotal: newBalance,
+                          lastPaymentDate: new Date().toISOString().split('T')[0],
+                          payments: [...(customer.payments || []), {
+                            id: `payment-${Date.now()}`,
+                            date: new Date().toISOString().split('T')[0],
+                            amount: payable,
+                            paymentType: 'partial',
+                            notes: `Bill payment - ${activeBill.billNumber}`
+                          }]
+                        };
+                        
+                        setDineAndGoCustomers((cur) => cur.map((c) => (c.id === activeBill.dineAndGoCustomerId ? updated : c)));
+                        
+                        if (hasFirebaseConfig) {
+                          try {
+                            await saveDineAndGoCustomer(activeBill.dineAndGoCustomerId, updated);
+                          } catch (error) {
+                            console.error('Failed to process dine-and-go payment:', error);
+                          }
+                        }
+
+                        const updatedBill: Bill = {
+                          ...activeBill,
+                          status: 'Served',
+                          paymentStatus: 'Paid',
+                          paymentMethod: 'Dine-and-Go',
+                        };
+                        updateBill(updatedBill);
+                        setShowPaymentModal(false);
+                        setPaymentMethod(null);
+                        setCashGiven('');
+                      }
                     }
                   } else {
                     // Process card or transfer payment
@@ -2029,6 +2172,140 @@ export default function POSPage() {
                 Confirm Payment
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Convert to Dine-and-Go Modal */}
+      {showConvertToDineAndGoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="rounded-[20px] bg-white p-4 md:p-6 shadow-2xl max-w-md w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900">Convert to Dine-and-Go</h3>
+              <button onClick={() => {
+                setShowConvertToDineAndGoModal(false);
+                setConvertBillId('');
+                setNewDineAndGoName('');
+                setNewDineAndGoTable('');
+                setNewDineAndGoCompany('');
+              }} className="text-slate-500 hover:text-slate-700">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {(() => {
+              const bill = bills.find(b => b.id === convertBillId);
+              const billTotal = bill ? bill.items.reduce((sum, item) => sum + item.price * item.quantity, 0) : 0;
+              return (
+                <>
+                  <div className="bg-slate-50 rounded-xl p-3 mb-4">
+                    <p className="text-xs text-slate-500">Bill Amount</p>
+                    <p className="text-2xl font-bold text-slate-900">{formatMVR(billTotal)}</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Customer Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={newDineAndGoName}
+                        onChange={(e) => setNewDineAndGoName(e.target.value)}
+                        placeholder="Enter customer name"
+                        className="w-full rounded-[16px] border-2 border-slate-200 px-3 py-2 text-sm focus:border-green-600 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Table (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={newDineAndGoTable}
+                        onChange={(e) => setNewDineAndGoTable(e.target.value)}
+                        placeholder="Table number"
+                        className="w-full rounded-[16px] border-2 border-slate-200 px-3 py-2 text-sm focus:border-green-600 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Company (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={newDineAndGoCompany}
+                        onChange={(e) => setNewDineAndGoCompany(e.target.value)}
+                        placeholder="Company name"
+                        className="w-full rounded-[16px] border-2 border-slate-200 px-3 py-2 text-sm focus:border-green-600 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowConvertToDineAndGoModal(false);
+                        setConvertBillId('');
+                        setNewDineAndGoName('');
+                        setNewDineAndGoTable('');
+                        setNewDineAndGoCompany('');
+                      }}
+                      className="flex-1 rounded-[16px] bg-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-400"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!newDineAndGoName || !bill) return;
+
+                        const newCustomer: DineAndGoCustomer = {
+                          id: `dineandgo-${Date.now()}`,
+                          name: newDineAndGoName,
+                          table: newDineAndGoTable || bill.table,
+                          company: newDineAndGoCompany,
+                          runningTotal: billTotal,
+                          lastPaymentDate: '',
+                          payments: [],
+                          createdAt: new Date().toISOString(),
+                        };
+
+                        setDineAndGoCustomers((cur) => [newCustomer, ...cur]);
+
+                        if (hasFirebaseConfig) {
+                          try {
+                            await saveDineAndGoCustomer(newCustomer.id, newCustomer);
+                          } catch (error) {
+                            console.error('Failed to save dine-and-go customer:', error);
+                          }
+                        }
+
+                        // Mark bill as served but unpaid
+                        const updatedBill: Bill = {
+                          ...bill,
+                          status: 'Served',
+                          paymentStatus: 'Unpaid',
+                          dineAndGoCustomerId: newCustomer.id,
+                        };
+                        updateBill(updatedBill);
+
+                        setShowConvertToDineAndGoModal(false);
+                        setConvertBillId('');
+                        setNewDineAndGoName('');
+                        setNewDineAndGoTable('');
+                        setNewDineAndGoCompany('');
+                      }}
+                      disabled={!newDineAndGoName}
+                      className="flex-1 rounded-[16px] bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                    >
+                      Convert & Charge
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
