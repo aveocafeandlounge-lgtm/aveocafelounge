@@ -455,6 +455,27 @@ export default function POSPage() {
       return sum + billTotal + tax;
     }, 0);
 
+    // Calculate dine-and-go statistics
+    const todayDineAndGoCharges = dineAndGoCustomers.reduce((sum, customer) => {
+      const todayCharges = (customer.charges || []).filter(c => c.date === today);
+      return sum + todayCharges.reduce((chargeSum, charge) => chargeSum + charge.amount, 0);
+    }, 0);
+
+    const todayDineAndGoPayments = dineAndGoCustomers.reduce((sum, customer) => {
+      const todayPayments = (customer.payments || []).filter(p => p.date === today);
+      return sum + todayPayments.reduce((paymentSum, payment) => paymentSum + payment.amount, 0);
+    }, 0);
+
+    const totalDineAndGoCharges = dineAndGoCustomers.reduce((sum, customer) => {
+      return sum + (customer.charges || []).reduce((chargeSum, charge) => chargeSum + charge.amount, 0);
+    }, 0);
+
+    const totalDineAndGoPayments = dineAndGoCustomers.reduce((sum, customer) => {
+      return sum + (customer.payments || []).reduce((paymentSum, payment) => paymentSum + payment.amount, 0);
+    }, 0);
+
+    const currentDineAndGoBalance = dineAndGoCustomers.reduce((sum, customer) => sum + (customer.runningTotal ?? 0), 0);
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       alert('Please allow popups to print the report');
@@ -516,8 +537,27 @@ export default function POSPage() {
 
           <div class="section">
             <div class="section-title">DINE-AND-GO SUMMARY</div>
-            <div class="row"><span>Total Outstanding:</span><span>${formatMVR(dineAndGoCustomers.reduce((sum, c) => sum + (c.runningTotal ?? 0), 0))}</span></div>
+            <div class="row"><span>Today's Charges:</span><span>${formatMVR(todayDineAndGoCharges)}</span></div>
+            <div class="row"><span>Today's Payments:</span><span>${formatMVR(todayDineAndGoPayments)}</span></div>
+            <div class="row"><span>Total Charges (All Time):</span><span>${formatMVR(totalDineAndGoCharges)}</span></div>
+            <div class="row"><span>Total Payments (All Time):</span><span>${formatMVR(totalDineAndGoPayments)}</span></div>
+            <div class="row total-row"><span>Current Outstanding Balance:</span><span>${formatMVR(currentDineAndGoBalance)}</span></div>
             <div class="row"><span>Active Customers:</span><span>${dineAndGoCustomers.length}</span></div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">DINE-AND-GO CUSTOMER BREAKDOWN</div>
+            ${dineAndGoCustomers.map(customer => {
+              const customerCharges = (customer.charges || []).reduce((sum, c) => sum + c.amount, 0);
+              const customerPayments = (customer.payments || []).reduce((sum, p) => sum + p.amount, 0);
+              const customerBalance = customer.runningTotal ?? 0;
+              return `
+                <div class="row" style="font-weight: bold; margin-top: 8px;"><span>${customer.name}:</span></div>
+                <div class="row" style="font-size: 10px; margin-left: 10px;"><span>Total Charged:</span><span>${formatMVR(customerCharges)}</span></div>
+                <div class="row" style="font-size: 10px; margin-left: 10px;"><span>Total Paid:</span><span>${formatMVR(customerPayments)}</span></div>
+                <div class="row" style="font-size: 10px; margin-left: 10px; font-weight: bold;"><span>Outstanding:</span><span>${formatMVR(customerBalance)}</span></div>
+              `;
+            }).join('')}
           </div>
 
           <div class="section" style="margin-top: 20px; text-align: center; border-top: 2px solid #000; padding-top: 10px;">
