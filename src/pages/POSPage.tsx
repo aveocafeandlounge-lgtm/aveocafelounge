@@ -319,82 +319,32 @@ export default function POSPage() {
       return;
     }
 
-    const itemsHtml = activeBill.items.map(item => 
-      `<div style="display: flex; justify-content: space-between; padding: 4px 0;">
+    const billTotal = activeBill.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const taxAmount = (billTotal * (activeBill.tax ?? 0)) / 100;
+    const total = billTotal + taxAmount;
+
+    const itemsHtml = activeBill.items.map(item => `
+      <div class="row">
         <span>${item.name} x${item.quantity}</span>
         <span>${formatMVR(item.price * item.quantity)}</span>
-      </div>`
-    ).join('');
+      </div>
+    `).join('');
 
-    const subtotal = activeBill.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const taxAmount = Math.round((subtotal * (activeBill.tax ?? 0)) / 100);
-    const total = subtotal + taxAmount;
+    const subtotal = billTotal;
 
     printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
+    <html>
       <head>
-        <title>Bill - ${activeBill.billNumber || activeBill.title}</title>
+        <title>Bill ${activeBill.billNumber}</title>
         <style>
-          body {
-            font-family: monospace;
-            font-size: 42px;
-            width: 300mm;
-            margin: 0;
-            padding: 45px;
-          }
-          .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 45px;
-          }
-          .header-left {
-            flex: 0 0 auto;
-          }
-          .header-center {
-            flex: 1;
-            text-align: center;
-          }
-          .header-right {
-            flex: 0 0 auto;
-          }
-          .logo {
-            width: 180px;
-            height: 180px;
-            border-radius: 50%;
-          }
-          .qr {
-            width: 180px;
-            height: 180px;
-          }
-          .section {
-            border-top: 1px dashed #000;
-            padding-top: 24px;
-            margin-top: 45px;
-          }
-          .row {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 0;
-          }
-          .total {
-            font-weight: bold;
-            font-size: 54px;
-          }
-          .center {
-            text-align: center;
-          }
-          @media print {
-            body {
-              width: 300mm;
-              margin: 0;
-            }
-            @page {
-              margin: 0;
-              size: 300mm auto;
-            }
-          }
+          body { font-family: monospace; font-size: 12px; margin: 10px; }
+          .header { text-align: center; margin-bottom: 10px; }
+          .bill-info { margin-bottom: 10px; }
+          .items { margin-bottom: 10px; }
+          .item { display: flex; justify-content: space-between; margin: 2px 0; }
+          .totals { border-top: 1px dashed #000; padding-top: 5px; }
+          .total { font-weight: bold; }
+          @media print { body { margin: 0; } }
         </style>
       </head>
       <body>
@@ -436,6 +386,150 @@ export default function POSPage() {
       printWindow.print();
       printWindow.close();
     };
+  };
+
+  const generateDayEndReport = () => {
+    if (bills.length === 0) {
+      alert('No bills loaded yet. Please wait for data to load or refresh the page.');
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const todaysBills = bills.filter(bill => bill.createdAt.startsWith(today));
+
+    const totalBills = todaysBills.length;
+    const closedBills = todaysBills.filter(b => b.status === 'Served' && b.paymentStatus === 'Paid').length;
+    
+    // Break down pending bills by status for debugging
+    const pendingBills = todaysBills.filter(b => 
+      b.status !== 'Served' || (b.status === 'Served' && b.paymentStatus !== 'Paid')
+    );
+    
+    const pendingStatusBreakdown = {
+      Pending: pendingBills.filter(b => b.status === 'Pending').length,
+      Preparing: pendingBills.filter(b => b.status === 'Preparing').length,
+      Ready: pendingBills.filter(b => b.status === 'Ready').length,
+      ServedUnpaid: pendingBills.filter(b => b.status === 'Served' && b.paymentStatus !== 'Paid').length,
+    };
+
+    // Calculate item sales
+    const itemSales: { [key: string]: { quantity: number; total: number } } = {};
+    todaysBills.forEach(bill => {
+      bill.items.forEach(item => {
+        if (!itemSales[item.name]) {
+          itemSales[item.name] = { quantity: 0, total: 0 };
+        }
+        itemSales[item.name].quantity += item.quantity;
+        itemSales[item.name].total += item.price * item.quantity;
+      });
+    });
+
+    // Calculate totals by payment method
+    const cashTotal = todaysBills.filter(b => b.paymentMethod === 'Cash').reduce((sum, b) => {
+      const billTotal = b.items.reduce((s, i) => s + i.price * i.quantity, 0);
+      const tax = (billTotal * (b.tax ?? 0)) / 100;
+      return sum + billTotal + tax;
+    }, 0);
+
+    const cardTotal = todaysBills.filter(b => b.paymentMethod === 'Card').reduce((sum, b) => {
+      const billTotal = b.items.reduce((s, i) => s + i.price * i.quantity, 0);
+      const tax = (billTotal * (b.tax ?? 0)) / 100;
+      return sum + billTotal + tax;
+    }, 0);
+
+    const transferTotal = todaysBills.filter(b => b.paymentMethod === 'Bank transfer').reduce((sum, b) => {
+      const billTotal = b.items.reduce((s, i) => s + i.price * i.quantity, 0);
+      const tax = (billTotal * (b.tax ?? 0)) / 100;
+      return sum + billTotal + tax;
+    }, 0);
+
+    const dineAndGoTotal = todaysBills.filter(b => b.paymentMethod === 'Dine-and-Go').reduce((sum, b) => {
+      const billTotal = b.items.reduce((s, i) => s + i.price * i.quantity, 0);
+      const tax = (billTotal * (b.tax ?? 0)) / 100;
+      return sum + billTotal + tax;
+    }, 0);
+
+    const totalSales = todaysBills.reduce((sum, b) => {
+      const billTotal = b.items.reduce((s, i) => s + i.price * i.quantity, 0);
+      const tax = (billTotal * (b.tax ?? 0)) / 100;
+      return sum + billTotal + tax;
+    }, 0);
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to print the report');
+      return;
+    }
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Day End Report</title>
+          <style>
+            body { font-family: monospace; font-size: 12px; margin: 10px; }
+            .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+            .section { margin-bottom: 15px; }
+            .section-title { font-weight: bold; margin-bottom: 5px; text-decoration: underline; }
+            .row { display: flex; justify-content: space-between; margin: 3px 0; }
+            .total-row { font-weight: bold; border-top: 1px dashed #000; padding-top: 5px; }
+            .item-row { display: flex; justify-content: space-between; margin: 2px 0; }
+            @media print { body { margin: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>LOAVASHI HUB CAFE</h2>
+            <h3>DAY END REPORT</h3>
+            <p>Date: ${new Date().toLocaleDateString()}</p>
+            <p>Time: ${new Date().toLocaleTimeString()}</p>
+          </div>
+
+          <div class="section">
+            <div class="section-title">BILL SUMMARY</div>
+            <div class="row"><span>Total Bills:</span><span>${totalBills}</span></div>
+            <div class="row"><span>Closed (Paid):</span><span>${closedBills}</span></div>
+            <div class="row"><span>Pending:</span><span>${pendingBills.length}</span></div>
+            <div class="row" style="font-size: 10px; color: #666;"><span>- Pending: ${pendingStatusBreakdown.Pending}</span></div>
+            <div class="row" style="font-size: 10px; color: #666;"><span>- Preparing: ${pendingStatusBreakdown.Preparing}</span></div>
+            <div class="row" style="font-size: 10px; color: #666;"><span>- Ready: ${pendingStatusBreakdown.Ready}</span></div>
+            <div class="row" style="font-size: 10px; color: #666;"><span>- Served (Unpaid): ${pendingStatusBreakdown.ServedUnpaid}</span></div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">SALES BY PAYMENT METHOD</div>
+            <div class="row"><span>Cash:</span><span>${formatMVR(cashTotal)}</span></div>
+            <div class="row"><span>Card:</span><span>${formatMVR(cardTotal)}</span></div>
+            <div class="row"><span>Bank Transfer:</span><span>${formatMVR(transferTotal)}</span></div>
+            <div class="row"><span>Dine-and-Go:</span><span>${formatMVR(dineAndGoTotal)}</span></div>
+            <div class="row total-row"><span>TOTAL SALES:</span><span>${formatMVR(totalSales)}</span></div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">ITEM SALES</div>
+            ${Object.entries(itemSales).map(([name, data]) => `
+              <div class="item-row">
+                <span>${name} x${data.quantity}</span>
+                <span>${formatMVR(data.total)}</span>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="section">
+            <div class="section-title">DINE-AND-GO SUMMARY</div>
+            <div class="row"><span>Total Outstanding:</span><span>${formatMVR(dineAndGoCustomers.reduce((sum, c) => sum + (c.runningTotal ?? 0), 0))}</span></div>
+            <div class="row"><span>Active Customers:</span><span>${dineAndGoCustomers.length}</span></div>
+          </div>
+
+          <div class="section" style="margin-top: 20px; text-align: center; border-top: 2px solid #000; padding-top: 10px;">
+            <p>End of Report</p>
+            <p>Generated by LOAVASHI HUB CAFE POS</p>
+          </div>
+
+          <script>window.onload = () => window.print();</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const assignCustomer = (customerId: string) => {
@@ -1963,6 +2057,13 @@ export default function POSPage() {
           className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
         >
           No Sales
+        </button>
+        <button
+          type="button"
+          onClick={generateDayEndReport}
+          className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
+        >
+          Day End Report
         </button>
         <button
           type="button"
