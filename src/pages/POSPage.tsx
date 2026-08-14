@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
-import { useAuth } from '../context/AuthContext';
 import { formatMVR } from '../lib/mvr';
 import { hasFirebaseConfig } from '../lib/firebase';
 import { loadCollection, saveDocument } from '../lib/firestore';
@@ -28,8 +27,6 @@ const defaultCustomer: Partial<Customer> = {
   email: '',
   notes: '',
 };
-
-const logo = '/logo.jpeg';
 
 function generateBillNumber(tableName: string, seatNumber: string, existingBills: Bill[], orderType: 'Dine-in' | 'Takeaway'): string {
   if (orderType === 'Takeaway') {
@@ -98,7 +95,6 @@ function createEmptyBill(tableName: string, seatNumber: string, existingBills: B
 }
 
 export default function POSPage() {
-  const { user } = useAuth();
   const [products, setProducts] = useState<MenuItem[]>([]);
   const [tables, setTables] = useState<TableItem[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -124,7 +120,6 @@ export default function POSPage() {
   const [quickPresets, setQuickPresets] = useState<Array<{ id: string; name: string; price: number; qty: number }>>([]);
   const [saveAsPreset, setSaveAsPreset] = useState(false);
   const [newCustomer, setNewCustomer] = useState<Partial<Customer>>(defaultCustomer);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [selectedTableForNewOrder, setSelectedTableForNewOrder] = useState<string>('');
   const [selectedSeatForNewOrder, setSelectedSeatForNewOrder] = useState('S1');
@@ -191,11 +186,8 @@ export default function POSPage() {
 
   const loadData = async () => {
     if (!hasFirebaseConfig) {
-      setStatusMessage('Firebase is not configured. POS cannot load real menu, tables, or bills.');
       return;
     }
-
-    setStatusMessage(null);
 
     try {
       const [loadedProducts, loadedTables, loadedBills, loadedCustomers] = await Promise.all([
@@ -215,11 +207,9 @@ export default function POSPage() {
       setActiveBillId('');
 
       if (!loadedTables.length) {
-        setStatusMessage('Add your tables first in Table Management before taking POS orders.');
       }
     } catch (error) {
       console.error('Failed to load POS data from Firestore:', error);
-      setStatusMessage('Unable to load POS data from Firestore. Verify your Firebase connection.');
     }
   };
 
@@ -234,7 +224,6 @@ export default function POSPage() {
     if (hasFirebaseConfig) {
       saveDocument('bills', updatedBill.id, updatedBill).catch((error) => {
         console.error('Failed to persist bill:', error);
-        setStatusMessage('Unable to save bill to Firestore. Check your connection.');
       });
     }
   };
@@ -411,7 +400,6 @@ export default function POSPage() {
 
   const addCustomer = async () => {
     if (!newCustomer.name?.trim()) {
-      setStatusMessage('Customer name is required.');
       return;
     }
 
@@ -425,11 +413,9 @@ export default function POSPage() {
 
     setCustomers((current) => [payload, ...current]);
     setNewCustomer(defaultCustomer);
-    setStatusMessage('Customer created. Select them for the bill in the panel.');
     if (hasFirebaseConfig) {
       await saveDocument('customers', payload.id, payload).catch((error) => {
         console.error('Failed to save customer in Firestore:', error);
-        setStatusMessage('Customer was created locally but did not persist.');
       });
     }
   };
@@ -448,14 +434,12 @@ export default function POSPage() {
 
   const addQuickItemToBill = async () => {
     if (!quickItemName.trim() || !quickItemPrice || quickItemQty < 1) {
-      setStatusMessage('Please provide name, price and quantity.');
       return;
     }
 
     // Require an active bill - do not auto-select a table
     let targetBill = activeBill;
     if (!targetBill) {
-      setStatusMessage('Please create a new order first by selecting a table.');
       setShowQuickAddModal(false);
       return;
     }
@@ -524,12 +508,10 @@ export default function POSPage() {
         bill => bill.table === tableName && bill.status !== 'Served'
       );
       if (activeBillsForTable.length >= 6) {
-        setStatusMessage(`Maximum 6 bills allowed for ${tableName}. Please serve or close existing bills first.`);
         return;
       }
       const newBill = createEmptyBill(tableName, 'S1', bills, 'Dine-in', useDefaultTaxRate ? defaultTaxRate : 0);
-      if (newBill.billNumber.includes('MAX')) {
-        setStatusMessage(`Maximum 6 bills allowed for ${tableName}. Please serve or close existing bills first.`);
+      if (newBill.billNumber && newBill.billNumber.includes('MAX')) {
         return;
       }
       setBills((current) => [...current, newBill]);
@@ -559,51 +541,34 @@ export default function POSPage() {
     };
 
     updateBill(updatedBill);
-    setStatusMessage(`Added ${preset.name} x${preset.qty} to bill`);
   };
 
   const holdOrder = () => {
     if (!activeBill) return;
     updateBill({ ...activeBill, status: 'Pending' });
-    setStatusMessage('Order is placed on hold.');
   };
 
   const voidBill = () => {
     if (!activeBill) return;
     if (!activeBill.items.length) {
-      setStatusMessage('No items to void.');
       return;
     }
     updateBill({ ...activeBill, items: [], status: 'Pending' });
-    setStatusMessage('All items voided.');
   };
 
   const processRefund = () => {
     if (!activeBill) return;
     if (activeBill.status !== 'Served') {
-      setStatusMessage('Can only refund completed bills.');
       return;
     }
     updateBill({ ...activeBill, paymentStatus: 'Paid', notes: (activeBill.notes || '') + ' [REFUNDED]' });
-    setStatusMessage('Refund processed and marked on bill.');
   };
 
   const goBack = () => {
     if (activeBill?.items.length) {
-      setStatusMessage('Please clear or save the current bill before going back.');
       return;
     }
     navigate('/pos');
-  };
-
-  const saveCurrentBill = async () => {
-    if (!activeBill) return;
-    if (!activeBill.items.length) {
-      setStatusMessage('Add at least one item before saving this order.');
-      return;
-    }
-
-    setShowPrintConfirmation(true);
   };
 
   const handlePrintConfirmation = async (print: boolean) => {
@@ -627,14 +592,12 @@ export default function POSPage() {
       setBillToPrint(savedBill);
       setShowPrintPreview(true);
     } else {
-      setStatusMessage('Order saved as an open bill. Create a new order to continue.');
       navigate('/bills/pending');
     }
   };
 
   const closePrintPreview = () => {
     setShowPrintPreview(false);
-    setStatusMessage('Order saved as an open bill. Create a new order to continue.');
     navigate('/bills/pending');
   };
 
@@ -1014,10 +977,8 @@ export default function POSPage() {
                                 setSelectedTableForNewOrder('');
                                 setSelectedSeatForNewOrder('S1');
                                 setSelectedPaxForNewOrder(1);
-                                setStatusMessage(`New takeaway order created.`);
                               } else {
                                 if (!selectedTableForNewOrder) {
-                                  setStatusMessage('Please select a table.');
                                   return;
                                 }
                                 const table = tables.find((t) => t.id === selectedTableForNewOrder);
@@ -1027,7 +988,6 @@ export default function POSPage() {
                                   bill => bill.table === table.name && bill.status !== 'Served'
                                 );
                                 if (activeBillsForTable.length >= 6) {
-                                  setStatusMessage(`Maximum 6 bills allowed for ${table.name}. Please serve or close existing bills first.`);
                                   return;
                                 }
                                 const newBill = createEmptyBill(table.name, selectedSeatForNewOrder, bills, selectedOrderType, useDefaultTaxRate ? defaultTaxRate : 0);
@@ -1042,7 +1002,6 @@ export default function POSPage() {
                                 setSelectedTableForNewOrder('');
                                 setSelectedSeatForNewOrder('S1');
                                 setSelectedPaxForNewOrder(1);
-                                setStatusMessage(`New order created for ${table.name} ${selectedSeatForNewOrder} with ${selectedPaxForNewOrder} guests.`);
                               }
                             }}
                             disabled={selectedOrderType === 'Dine-in' && !selectedTableForNewOrder}
@@ -1399,7 +1358,6 @@ export default function POSPage() {
                             return [...billsWithoutOriginal, ...billsWithItems];
                           });
                           setActiveBillId('');
-                          setStatusMessage(`Bill split into ${billsWithItems.length} separate bills`);
                           setSplitBillOpen(false);
                         }} className="flex-1 rounded-lg bg-green-500 px-3 py-2 text-sm font-semibold text-white hover:bg-green-600">Save Split Bills</button>
                       </div>
@@ -1736,7 +1694,6 @@ export default function POSPage() {
         </button>
         <button
           type="button"
-          onClick={() => setStatusMessage('Department management coming soon.')}
           className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
         >
           Depts
@@ -1751,7 +1708,6 @@ export default function POSPage() {
         </button>
         <button
           type="button"
-          onClick={() => setStatusMessage('Table orders filter coming soon.')}
           className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
         >
           Table Orders
@@ -1798,13 +1754,10 @@ export default function POSPage() {
           type="button"
           onClick={() => {
             if (!activeBill?.items.length) {
-              setStatusMessage('No items to remove.');
               return;
             }
-            const lastItem = activeBill.items[activeBill.items.length - 1];
             const updatedBill = { ...activeBill, items: activeBill.items.slice(0, -1) };
             updateBill(updatedBill);
-            setStatusMessage(`${lastItem.name} removed as no sale.`);
           }}
           className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
         >
@@ -1819,7 +1772,6 @@ export default function POSPage() {
         </button>
         <button
           type="button"
-          onClick={() => setStatusMessage('Select items to check prices.')}
           className="inline-flex h-10 md:h-12 min-w-fit items-center justify-center gap-1.5 rounded-[16px] bg-slate-900 border-2 border-slate-900 px-2 md:px-3 text-xs md:text-sm font-semibold text-white hover:bg-slate-700 flex-shrink-0"
         >
           Price Check
@@ -1921,12 +1873,10 @@ export default function POSPage() {
                 type="button"
                 onClick={() => {
                   if (!paymentMethod) {
-                    setStatusMessage('Please select a payment method');
                     return;
                   }
                   if (paymentMethod === 'cash') {
                     if (!cashGiven || Number(cashGiven) < payable) {
-                      setStatusMessage('Please enter a valid amount');
                       return;
                     }
                     // Process cash payment - save bill with cash payment method
@@ -1940,15 +1890,12 @@ export default function POSPage() {
                         change: Number(cashGiven) - payable,
                       };
                       updateBill(updatedBill);
-                      saveDocument('bills', updatedBill.id, updatedBill).catch((error) => {
-                        console.error('Failed to save bill:', error);
-                      });
-                      setActiveBillId('');
-                      setBillToPrint(updatedBill);
-                      setShowPrintConfirmation(true);
+                      setShowPaymentModal(false);
+                      setPaymentMethod(null);
+                      setCashGiven('');
                     }
-                  } else if (paymentMethod === 'card' || paymentMethod === 'transfer') {
-                    // Process card/transfer payment - mark as served
+                  } else {
+                    // Process card or transfer payment
                     if (activeBill) {
                       const updatedBill: Bill = {
                         ...activeBill,
@@ -1957,17 +1904,11 @@ export default function POSPage() {
                         paymentMethod: paymentMethod === 'card' ? 'Card' : 'Bank transfer',
                       };
                       updateBill(updatedBill);
-                      saveDocument('bills', updatedBill.id, updatedBill).catch((error) => {
-                        console.error('Failed to save bill:', error);
-                      });
-                      setActiveBillId('');
-                      setBillToPrint(updatedBill);
-                      setShowPrintConfirmation(true);
+                      setShowPaymentModal(false);
+                      setPaymentMethod(null);
+                      setCashGiven('');
                     }
                   }
-                  setShowPaymentModal(false);
-                  setPaymentMethod(null);
-                  setCashGiven('');
                 }}
                 disabled={!paymentMethod || (paymentMethod === 'cash' && (!cashGiven || Number(cashGiven) < payable))}
                 className="flex-1 rounded-[16px] bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
