@@ -5,7 +5,11 @@ export async function loadDineAndGoCustomers(): Promise<DineAndGoCustomer[]> {
 }
 
 export async function saveDineAndGoCustomer(id: string, data: DineAndGoCustomer): Promise<void> {
-  return saveDocument('dineAndGoCustomers', id, data);
+  // Remove undefined values before saving to Firestore
+  const cleanedData = Object.fromEntries(
+    Object.entries(data).filter(([_, value]) => value !== undefined)
+  );
+  return saveDocument('dineAndGoCustomers', id, cleanedData);
 }
 
 export async function deleteDineAndGoCustomer(id: string): Promise<void> {

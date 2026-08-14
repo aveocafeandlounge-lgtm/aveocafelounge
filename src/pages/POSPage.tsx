@@ -1982,6 +1982,30 @@ export default function POSPage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
+
+            {/* Convert to Dine-and-Go Option */}
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (activeBill) {
+                    setConvertBillId(activeBill.id);
+                    setShowConvertToDineAndGoModal(true);
+                    setShowPaymentModal(false);
+                  }
+                }}
+                className="w-full rounded-[16px] border-2 border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition cursor-pointer"
+              >
+                📋 Convert to Dine-and-Go (Pay Later)
+              </button>
+            </div>
+
+            <div className="border-t border-slate-200 pt-4 mb-4">
+              <p className="text-xs text-slate-500 mb-3">Or select payment method:</p>
+            </div>
+
             <div className="space-y-3">
               <button
                 type="button"
@@ -2070,19 +2094,6 @@ export default function POSPage() {
                 className="flex-1 rounded-[16px] bg-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-400"
               >
                 Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (activeBill) {
-                    setConvertBillId(activeBill.id);
-                    setShowConvertToDineAndGoModal(true);
-                    setShowPaymentModal(false);
-                  }
-                }}
-                className="flex-1 rounded-[16px] bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-              >
-                Convert to Dine-and-Go
               </button>
               <button
                 type="button"
@@ -2179,7 +2190,7 @@ export default function POSPage() {
       {/* Convert to Dine-and-Go Modal */}
       {showConvertToDineAndGoModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="rounded-[20px] bg-white p-4 md:p-6 shadow-2xl max-w-md w-full">
+          <div className="rounded-[20px] bg-white p-4 md:p-6 shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-900">Convert to Dine-and-Go</h3>
               <button onClick={() => {
@@ -2201,6 +2212,62 @@ export default function POSPage() {
                   <div className="bg-slate-50 rounded-xl p-3 mb-4">
                     <p className="text-xs text-slate-500">Bill Amount</p>
                     <p className="text-2xl font-bold text-slate-900">{formatMVR(billTotal)}</p>
+                  </div>
+
+                  {/* Existing Customers */}
+                  {dineAndGoCustomers.length > 0 && (
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Select Existing Customer
+                      </label>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {dineAndGoCustomers.map((customer) => (
+                          <button
+                            key={customer.id}
+                            type="button"
+                            onClick={async () => {
+                              if (!bill || !customer.id) return;
+
+                              const updated: DineAndGoCustomer = {
+                                ...customer,
+                                runningTotal: (customer.runningTotal ?? 0) + billTotal,
+                              };
+
+                              setDineAndGoCustomers((cur) => cur.map((c) => (c.id === customer.id ? updated : c)));
+
+                              if (hasFirebaseConfig) {
+                                try {
+                                  await saveDineAndGoCustomer(customer.id, updated);
+                                } catch (error) {
+                                  console.error('Failed to charge dine-and-go customer:', error);
+                                }
+                              }
+
+                              // Mark bill as served but unpaid
+                              const updatedBill: Bill = {
+                                ...bill,
+                                status: 'Served',
+                                paymentStatus: 'Unpaid',
+                                dineAndGoCustomerId: customer.id,
+                              };
+                              updateBill(updatedBill);
+
+                              setShowConvertToDineAndGoModal(false);
+                              setConvertBillId('');
+                            }}
+                            className="w-full rounded-[16px] border-2 border-slate-200 bg-white px-4 py-3 text-left hover:border-green-600 hover:bg-green-50 transition"
+                          >
+                            <p className="text-sm font-semibold text-slate-900">{customer.name || 'Unnamed'}</p>
+                            <p className="text-xs text-slate-500">{customer.table || 'No Table'} - {customer.company || 'No Company'}</p>
+                            <p className="text-xs text-slate-600 mt-1">Current Balance: {formatMVR(customer.runningTotal ?? 0)}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="border-t border-slate-200 pt-4 mb-4">
+                    <p className="text-xs text-slate-500 mb-3">Or create new customer:</p>
                   </div>
 
                   <div className="space-y-3">
@@ -2302,7 +2369,7 @@ export default function POSPage() {
                       disabled={!newDineAndGoName}
                       className="flex-1 rounded-[16px] bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
                     >
-                      Convert & Charge
+                      Create & Charge
                     </button>
                   </div>
                 </>
