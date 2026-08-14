@@ -487,13 +487,16 @@ export default function POSPage() {
         <head>
           <title>Day End Report</title>
           <style>
-            body { font-family: monospace; font-size: 12px; margin: 10px; }
-            .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-            .section { margin-bottom: 15px; }
-            .section-title { font-weight: bold; margin-bottom: 5px; text-decoration: underline; }
-            .row { display: flex; justify-content: space-between; margin: 3px 0; }
-            .total-row { font-weight: bold; border-top: 1px dashed #000; padding-top: 5px; }
-            .item-row { display: flex; justify-content: space-between; margin: 2px 0; }
+            body { font-family: monospace; font-size: 16px; margin: 10px; line-height: 1.4; }
+            .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 15px; }
+            .header h2 { font-size: 24px; margin: 0 0 10px 0; font-weight: bold; }
+            .header h3 { font-size: 20px; margin: 0 0 10px 0; font-weight: bold; }
+            .header p { font-size: 16px; margin: 5px 0; }
+            .section { margin-bottom: 20px; }
+            .section-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; text-decoration: underline; }
+            .row { display: flex; justify-content: space-between; margin: 5px 0; font-size: 16px; }
+            .total-row { font-weight: bold; border-top: 1px dashed #000; padding-top: 8px; margin-top: 8px; font-size: 18px; }
+            .item-row { display: flex; justify-content: space-between; margin: 4px 0; font-size: 16px; }
             @media print { body { margin: 0; } }
           </style>
         </head>
@@ -809,16 +812,17 @@ export default function POSPage() {
         <style>
           body {
             font-family: monospace;
-            font-size: 42px;
-            width: 300mm;
+            font-size: 18px;
+            width: 58mm;
             margin: 0;
-            padding: 45px;
+            padding: 5px;
+            line-height: 1.3;
           }
           .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 45px;
+            margin-bottom: 10px;
           }
           .header-left {
             flex: 0 0 auto;
@@ -831,39 +835,49 @@ export default function POSPage() {
             flex: 0 0 auto;
           }
           .logo {
-            width: 180px;
-            height: 180px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
           }
           .qr {
-            width: 180px;
-            height: 180px;
+            width: 40px;
+            height: 40px;
           }
           .section {
             border-top: 1px dashed #000;
-            padding-top: 24px;
-            margin-top: 45px;
+            padding-top: 5px;
+            margin-top: 10px;
           }
           .row {
             display: flex;
             justify-content: space-between;
-            padding: 12px 0;
+            padding: 2px 0;
+            font-size: 18px;
           }
           .total {
             font-weight: bold;
-            font-size: 54px;
+            font-size: 20px;
           }
           .center {
             text-align: center;
           }
+          .header-center h3 {
+            font-size: 20px;
+            margin: 0 0 2px 0;
+            font-weight: bold;
+          }
+          .header-center p {
+            font-size: 16px;
+            margin: 0;
+          }
           @media print {
             body {
-              width: 300mm;
+              width: 58mm;
               margin: 0;
             }
             @page {
               margin: 0;
-              size: 300mm auto;
+              size: 58mm auto;
             }
           }
         </style>
