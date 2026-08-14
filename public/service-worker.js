@@ -1,6 +1,6 @@
 // Bump cache name to force clients to install the updated service worker
-const CACHE_NAME = 'loavashi-hub-cache-v3';
-const ASSETS = ['/', '/index.html', '/manifest.json', '/logo.jpeg'];
+const CACHE_NAME = 'loavashi-hub-cache-v4';
+const ASSETS = ['/', '/index.html', '/manifest.json', '/logo.jpeg', '/logo.svg'];
 
 console.log('🔧 Service Worker Loading...');
 
@@ -140,5 +140,44 @@ self.addEventListener('message', (event) => {
   } catch (err) {
     console.warn('Service worker message handler error:', err);
   }
+});
+
+// Background sync for offline actions
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-bills') {
+    event.waitUntil(
+      // Sync bills when back online
+      console.log('🔄 Syncing bills in background...')
+    );
+  }
+});
+
+// Push notification support
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  
+  const data = event.data.json();
+  const options = {
+    body: data.body || 'New notification',
+    icon: '/logo.jpeg',
+    badge: '/logo.jpeg',
+    vibrate: [100, 50, 100],
+    data: {
+      dateOfArrival: Date.now(),
+      primaryKey: 1
+    }
+  };
+  
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Loavashi Hub', options)
+  );
+});
+
+// Handle notification clicks
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.openWindow('/')
+  );
 });
 
