@@ -31,16 +31,33 @@ const defaultCustomer: Partial<Customer> = {
 
 const logo = '/logo.jpeg';
 
-function generateBillNumber(tableName: string) {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const hour = String(now.getHours()).padStart(2, '0');
-  const minute = String(now.getMinutes()).padStart(2, '0');
-  const second = String(now.getSeconds()).padStart(2, '0');
+function generateBillNumber(tableName: string, seatNumber: string, existingBills: Bill[], orderType: 'Dine-in' | 'Takeaway'): string {
+  if (orderType === 'Takeaway') {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hour = String(now.getHours()).padStart(2, '0');
+    const minute = String(now.getMinutes()).padStart(2, '0');
+    const second = String(now.getSeconds()).padStart(2, '0');
+    return `Takeaway-${year}${month}${day}-${hour}${minute}${second}`;
+  }
+  
   const prefix = tableName.trim() || 'Table';
-  return `${prefix}-${year}${month}${day}-${hour}${minute}${second}`;
+  
+  // Count active (not served) bills for this table and seat
+  const activeBillsForTable = existingBills.filter(
+    bill => bill.table === tableName && bill.status !== 'Served'
+  );
+  
+  // Check if max 6 bills reached
+  if (activeBillsForTable.length >= 6) {
+    return `${prefix} (MAX)`;
+  }
+  
+  // Find the next sequence number
+  const sequence = activeBillsForTable.length + 1;
+  return `${prefix} ${seatNumber} (${sequence})`;
 }
 
 function buildOrderItem(item: MenuItem | { name: string; price: number }): OrderItem {
@@ -54,15 +71,15 @@ function buildOrderItem(item: MenuItem | { name: string; price: number }): Order
   };
 }
 
-function createEmptyBill(tableName: string, defaultTaxRate = 0): Bill {
-  const billNumber = generateBillNumber(tableName);
-  return {
+function createEmptyBill(tableName: string, seatNumber: string, existingBills: Bill[], orderType: 'Dine-in' | 'Takeaway', defaultTaxRate = 0): Bill {
+  const billNumber = generateBillNumber(tableName, seatNumber, existingBills, orderType);
+  const bill: Bill = {
     id: `bill-${Date.now()}`,
     billNumber,
     title: billNumber,
     table: tableName,
     items: [],
-    orderType: 'Dine-in',
+    orderType,
     discount: 0,
     tax: defaultTaxRate,
     status: 'Pending',
@@ -71,6 +88,13 @@ function createEmptyBill(tableName: string, defaultTaxRate = 0): Bill {
     paymentStatus: 'Unpaid',
     createdAt: new Date().toISOString(),
   };
+  
+  // Only include seat for Dine-in orders
+  if (orderType === 'Dine-in' && seatNumber) {
+    bill.seat = seatNumber;
+  }
+  
+  return bill;
 }
 
 export default function POSPage() {
@@ -103,11 +127,16 @@ export default function POSPage() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [selectedTableForNewOrder, setSelectedTableForNewOrder] = useState<string>('');
+  const [selectedSeatForNewOrder, setSelectedSeatForNewOrder] = useState('S1');
+  const [selectedOrderType, setSelectedOrderType] = useState<'Dine-in' | 'Takeaway'>('Dine-in');
   const [selectedPaxForNewOrder, setSelectedPaxForNewOrder] = useState(1);
   const [showPrintConfirmation, setShowPrintConfirmation] = useState(false);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [billToPrint, setBillToPrint] = useState<Bill | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer' | null>(null);
+  const [cashGiven, setCashGiven] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const toggleFullscreen = () => {
@@ -248,7 +277,17 @@ export default function POSPage() {
   const printCurrentBill = () => {
     if (!activeBill) return;
     const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+    if (!printWindow) {
+      alert('Please allow popups to print the bill');
+      return;
+    }
+
+    const itemsHtml = activeBill.items.map(item => 
+      `<div style="display: flex; justify-content: space-between; padding: 4px 0;">
+        <span>${item.name} x${item.quantity}</span>
+        <span>${formatMVR(item.price * item.quantity)}</span>
+      </div>`
+    ).join('');
 
     const subtotal = activeBill.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const taxAmount = Math.round((subtotal * (activeBill.tax ?? 0)) / 100);
@@ -260,68 +299,106 @@ export default function POSPage() {
       <head>
         <title>Bill - ${activeBill.billNumber || activeBill.title}</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; max-width: 300px; margin: 0 auto; }
-          .header { text-align: center; margin-bottom: 20px; }
-          .logo { width: 60px; height: 60px; border-radius: 50%; border: 2px solid #333; }
-          .cafe-name { font-size: 18px; font-weight: bold; margin-top: 10px; }
-          .cafe-subtitle { font-size: 12px; color: #666; }
-          .bill-info { margin-bottom: 15px; border-bottom: 1px dashed #ccc; padding-bottom: 10px; }
-          .bill-info p { margin: 5px 0; font-size: 12px; }
-          .items { margin-bottom: 15px; }
-          .item { display: flex; justify-content: space-between; margin: 8px 0; font-size: 12px; }
-          .item-name { flex: 1; }
-          .item-qty { margin-right: 10px; }
-          .item-price { text-align: right; }
-          .totals { border-top: 1px dashed #ccc; padding-top: 10px; }
-          .total-row { display: flex; justify-content: space-between; margin: 5px 0; font-size: 12px; }
-          .total-row.final { font-weight: bold; font-size: 14px; margin-top: 10px; }
-          .footer { text-align: center; margin-top: 20px; font-size: 10px; color: #666; }
+          body {
+            font-family: monospace;
+            font-size: 42px;
+            width: 300mm;
+            margin: 0;
+            padding: 45px;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 45px;
+          }
+          .header-left {
+            flex: 0 0 auto;
+          }
+          .header-center {
+            flex: 1;
+            text-align: center;
+          }
+          .header-right {
+            flex: 0 0 auto;
+          }
+          .logo {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+          }
+          .qr {
+            width: 180px;
+            height: 180px;
+          }
+          .section {
+            border-top: 1px dashed #000;
+            padding-top: 24px;
+            margin-top: 45px;
+          }
+          .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+          }
+          .total {
+            font-weight: bold;
+            font-size: 54px;
+          }
+          .center {
+            text-align: center;
+          }
+          @media print {
+            body {
+              width: 300mm;
+              margin: 0;
+            }
+            @page {
+              margin: 0;
+              size: 300mm auto;
+            }
+          }
         </style>
       </head>
       <body>
         <div class="header">
-          <img src="${logo}" alt="Loavashi Hub" class="logo" />
-          <div class="cafe-name">Loavashi Hub</div>
-          <div class="cafe-subtitle">Cafe & Restaurant</div>
-        </div>
-        <div class="bill-info">
-          <p><strong>Bill:</strong> ${activeBill.billNumber || activeBill.title}</p>
-          <p><strong>Table:</strong> ${activeBill.table}</p>
-          <p><strong>Date:</strong> ${new Date(activeBill.createdAt).toLocaleString()}</p>
-          <p><strong>Type:</strong> ${activeBill.orderType}</p>
-        </div>
-        <div class="items">
-          ${activeBill.items.map(item => `
-            <div class="item">
-              <span class="item-name">${item.name}</span>
-              <span class="item-qty">${item.quantity}x</span>
-              <span class="item-price">${formatMVR(item.price * item.quantity)}</span>
-            </div>
-          `).join('')}
-        </div>
-        <div class="totals">
-          <div class="total-row">
-            <span>Subtotal:</span>
-            <span>${formatMVR(subtotal)}</span>
+          <div class="header-left">
+            <img src="/logo.jpeg" alt="Logo" class="logo" />
           </div>
-          <div class="total-row">
-            <span>Tax (${activeBill.tax || 0}%):</span>
-            <span>${formatMVR(taxAmount)}</span>
+          <div class="header-center">
+            <h3>Loavashi Hub</h3>
+            <p>Restaurant Management System</p>
           </div>
-          <div class="total-row final">
-            <span>TOTAL:</span>
-            <span>${formatMVR(total)}</span>
+          <div class="header-right">
+            <img src="/qr code.PNG" alt="QR Code" class="qr" />
           </div>
         </div>
-        <div class="footer">
-          <p>Thank you for dining with us!</p>
-          <p>${new Date().getFullYear()} Loavashi Hub</p>
+        <div class="section">
+          <div class="row"><strong>Bill #:</strong> ${activeBill.billNumber || activeBill.title}</div>
+          <div class="row"><strong>Table:</strong> ${activeBill.table}</div>
+          <div class="row"><strong>Date:</strong> ${new Date(activeBill.createdAt).toLocaleString()}</div>
+        </div>
+        <div class="section">
+          ${itemsHtml}
+        </div>
+        <div class="section">
+          <div class="row"><strong>Subtotal:</strong> ${formatMVR(subtotal)}</div>
+          <div class="row"><strong>Tax (${activeBill.tax || 0}%):</strong> ${formatMVR(taxAmount)}</div>
+          <div class="row total"><strong>Total:</strong> ${formatMVR(total)}</div>
+        </div>
+        <div class="section center">
+          <p><strong>Payment Details</strong></p>
+          <p>BML Account: 7730000865890</p>
         </div>
       </body>
       </html>
     `);
+
     printWindow.document.close();
-    printWindow.print();
+    printWindow.onload = () => {
+      printWindow.print();
+      printWindow.close();
+    };
   };
 
   const assignCustomer = (customerId: string) => {
@@ -441,7 +518,20 @@ export default function POSPage() {
     // Similar logic to addQuickItemToBill but using preset values
     let targetBill = activeBill;
     if (!targetBill) {
-      const newBill = createEmptyBill(tables[0]?.name || 'Table', useDefaultTaxRate ? defaultTaxRate : 0);
+      const tableName = tables[0]?.name || 'Table';
+      // Check if table already has 6 active bills
+      const activeBillsForTable = bills.filter(
+        bill => bill.table === tableName && bill.status !== 'Served'
+      );
+      if (activeBillsForTable.length >= 6) {
+        setStatusMessage(`Maximum 6 bills allowed for ${tableName}. Please serve or close existing bills first.`);
+        return;
+      }
+      const newBill = createEmptyBill(tableName, 'S1', bills, 'Dine-in', useDefaultTaxRate ? defaultTaxRate : 0);
+      if (newBill.billNumber.includes('MAX')) {
+        setStatusMessage(`Maximum 6 bills allowed for ${tableName}. Please serve or close existing bills first.`);
+        return;
+      }
       setBills((current) => [...current, newBill]);
       targetBill = newBill;
       setActiveBillId(newBill.id);
@@ -703,8 +793,12 @@ export default function POSPage() {
   const availableTables = useMemo(
     () =>
       tables.filter(
-        (table) =>
-          !bills.some((bill) => bill.table === table.name && bill.status !== 'Served')
+        (table) => {
+          const activeBillsForTable = bills.filter(
+            bill => bill.table === table.name && bill.status !== 'Served'
+          );
+          return activeBillsForTable.length < 6;
+        }
       ),
     [tables, bills]
   );
@@ -720,12 +814,7 @@ export default function POSPage() {
   return (
     <AppShell>
       <div className="mx-auto w-full px-3 md:px-4 py-3 md:py-4">
-        {/* Status Message */}
-        {statusMessage ? (
-          <div className="mb-3 rounded-3xl border border-slate-200 bg-slate-50 px-3 md:px-4 py-2 md:py-2 text-xs text-slate-900">
-            {statusMessage}
-          </div>
-        ) : null}
+        {/* Product Grid */}
 
         {/* Search and Action Bar */}
         <div className="mb-3 flex flex-wrap items-center gap-2 md:gap-3">
@@ -790,36 +879,94 @@ export default function POSPage() {
                       </div>
 
                       <div className="space-y-4">
-                        {/* Table Selection */}
+                        {/* Order Type Selection */}
                         <div>
                           <label className="block text-xs font-semibold text-slate-900 mb-2">
-                            Select Table ({availableTables.length} available)
+                            Order Type
                           </label>
-                          {availableTables.length > 0 ? (
-                            <div className="grid grid-cols-2 gap-2">
-                              {availableTables.map((table) => (
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedOrderType('Dine-in')}
+                              className={`rounded-[16px] border-2 p-3 text-center transition ${
+                                selectedOrderType === 'Dine-in'
+                                  ? 'border-green-500 bg-green-50'
+                                  : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+                              }`}
+                            >
+                              <p className="text-sm font-semibold text-slate-900">Dine-in</p>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedOrderType('Takeaway')}
+                              className={`rounded-[16px] border-2 p-3 text-center transition ${
+                                selectedOrderType === 'Takeaway'
+                                  ? 'border-green-500 bg-green-50'
+                                  : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+                              }`}
+                            >
+                              <p className="text-sm font-semibold text-slate-900">Takeaway</p>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Table Selection - Only for Dine-in */}
+                        {selectedOrderType === 'Dine-in' && (
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-900 mb-2">
+                              Select Table ({availableTables.length} available)
+                            </label>
+                            {availableTables.length > 0 ? (
+                              <div className="grid grid-cols-2 gap-2">
+                                {availableTables.map((table) => (
+                                  <button
+                                    key={table.id}
+                                    type="button"
+                                    onClick={() => setSelectedTableForNewOrder(table.id)}
+                                    className={`rounded-[16px] border-2 p-3 text-center transition ${
+                                      selectedTableForNewOrder === table.id
+                                        ? 'border-green-500 bg-green-50'
+                                        : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+                                    }`}
+                                  >
+                                    <p className="text-sm font-semibold text-slate-900">{table.name}</p>
+                                    <p className="text-xs text-slate-500 mt-1">{table.section}</p>
+                                    <p className="text-xs text-slate-500">Max: {table.seats} pax</p>
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="rounded-[16px] border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
+                                No tables available. Add tables in Table Management first.
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Seat Selection - Only for Dine-in */}
+                        {selectedOrderType === 'Dine-in' && (
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-900 mb-2">
+                              Select Seat
+                            </label>
+                            <div className="grid grid-cols-4 gap-2">
+                              {['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'].map((seat) => (
                                 <button
-                                  key={table.id}
+                                  key={seat}
                                   type="button"
-                                  onClick={() => setSelectedTableForNewOrder(table.id)}
-                                  className={`rounded-[16px] border-2 p-3 text-center transition ${
-                                    selectedTableForNewOrder === table.id
+                                  onClick={() => setSelectedSeatForNewOrder(seat)}
+                                  className={`rounded-[16px] border-2 p-2 text-center transition ${
+                                    selectedSeatForNewOrder === seat
                                       ? 'border-green-500 bg-green-50'
                                       : 'border-slate-200 bg-slate-50 hover:border-slate-300'
                                   }`}
                                 >
-                                  <p className="text-sm font-semibold text-slate-900">{table.name}</p>
-                                  <p className="text-xs text-slate-500 mt-1">{table.section}</p>
-                                  <p className="text-xs text-slate-500">Max: {table.seats} pax</p>
+                                  <p className="text-sm font-semibold text-slate-900">{seat}</p>
                                 </button>
                               ))}
                             </div>
-                          ) : (
-                            <div className="rounded-[16px] border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
-                              No tables available. Add tables in Table Management first.
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
 
                         {/* Pax Selection */}
                         <div>
@@ -842,6 +989,8 @@ export default function POSPage() {
                             onClick={() => {
                               setShowNewOrderModal(false);
                               setSelectedTableForNewOrder('');
+                              setSelectedSeatForNewOrder('S1');
+                              setSelectedOrderType('Dine-in');
                               setSelectedPaxForNewOrder(1);
                             }}
                             className="rounded-[28px] border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
@@ -851,21 +1000,52 @@ export default function POSPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              if (!selectedTableForNewOrder) {
-                                setStatusMessage('Please select a table.');
-                                return;
+                              if (selectedOrderType === 'Takeaway') {
+                                // Create takeaway order without table
+                                const newBill = createEmptyBill('Takeaway', '', bills, 'Takeaway', useDefaultTaxRate ? defaultTaxRate : 0);
+                                setBills((current) => [...current, newBill]);
+                                setActiveBillId(newBill.id);
+                                if (hasFirebaseConfig) {
+                                  saveDocument('bills', newBill.id, newBill).catch((error) => {
+                                    console.error('Failed to save takeaway bill:', error);
+                                  });
+                                }
+                                setShowNewOrderModal(false);
+                                setSelectedTableForNewOrder('');
+                                setSelectedSeatForNewOrder('S1');
+                                setSelectedPaxForNewOrder(1);
+                                setStatusMessage(`New takeaway order created.`);
+                              } else {
+                                if (!selectedTableForNewOrder) {
+                                  setStatusMessage('Please select a table.');
+                                  return;
+                                }
+                                const table = tables.find((t) => t.id === selectedTableForNewOrder);
+                                if (!table) return;
+                                // Check if table already has 6 active bills
+                                const activeBillsForTable = bills.filter(
+                                  bill => bill.table === table.name && bill.status !== 'Served'
+                                );
+                                if (activeBillsForTable.length >= 6) {
+                                  setStatusMessage(`Maximum 6 bills allowed for ${table.name}. Please serve or close existing bills first.`);
+                                  return;
+                                }
+                                const newBill = createEmptyBill(table.name, selectedSeatForNewOrder, bills, selectedOrderType, useDefaultTaxRate ? defaultTaxRate : 0);
+                                setBills((current) => [...current, newBill]);
+                                setActiveBillId(newBill.id);
+                                if (hasFirebaseConfig) {
+                                  saveDocument('bills', newBill.id, newBill).catch((error) => {
+                                    console.error('Failed to save dine-in bill:', error);
+                                  });
+                                }
+                                setShowNewOrderModal(false);
+                                setSelectedTableForNewOrder('');
+                                setSelectedSeatForNewOrder('S1');
+                                setSelectedPaxForNewOrder(1);
+                                setStatusMessage(`New order created for ${table.name} ${selectedSeatForNewOrder} with ${selectedPaxForNewOrder} guests.`);
                               }
-                              const table = tables.find((t) => t.id === selectedTableForNewOrder);
-                              if (!table) return;
-                              const newBill = createEmptyBill(table.name, useDefaultTaxRate ? defaultTaxRate : 0);
-                              setBills((current) => [...current, newBill]);
-                              setActiveBillId(newBill.id);
-                              setShowNewOrderModal(false);
-                              setSelectedTableForNewOrder('');
-                              setSelectedPaxForNewOrder(1);
-                              setStatusMessage(`New order created for ${table.name} with ${selectedPaxForNewOrder} guests.`);
                             }}
-                            disabled={!selectedTableForNewOrder}
+                            disabled={selectedOrderType === 'Dine-in' && !selectedTableForNewOrder}
                             className="inline-flex items-center justify-center rounded-[28px] bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-lg hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
                           >
                             Create Order
@@ -922,7 +1102,7 @@ export default function POSPage() {
                             : 'border-red-400 bg-white text-red-600 hover:bg-red-100'
                         }`}
                       >
-                        {bill.table} {bill.items.length > 0 && `(${bill.items.length})`}
+                        {bill.table} {bill.seat} {bill.items.length > 0 && `(${bill.items.length})`}
                       </button>
                     ))}
                 </div>
@@ -1119,7 +1299,7 @@ export default function POSPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const newBill = createEmptyBill(activeBill.table + ' Split', activeBill.tax);
+                            const newBill = createEmptyBill(activeBill.table + ' Split', 'S1', bills, 'Dine-in', activeBill.tax);
                             setSplitBills([...splitBills, newBill]);
                           }}
                           className="flex-1 rounded-lg bg-green-500 px-3 py-2 text-sm font-semibold text-white hover:bg-green-600"
@@ -1507,18 +1687,32 @@ export default function POSPage() {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={saveCurrentBill}
-              disabled={!canSaveCurrentBill}
-              className={`w-full rounded-[18px] px-3 py-2 text-xs md:text-sm font-semibold text-white shadow-lg transition ${
-                canSaveCurrentBill
-                  ? 'bg-green-500 hover:bg-green-600'
-                  : 'bg-slate-300 cursor-not-allowed'
-              }`}
-            >
-              PAY {formatMVR(payable)}
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeBill && activeBill.items.length > 0) {
+                    setShowPaymentModal(true);
+                  }
+                }}
+                disabled={!canSaveCurrentBill}
+                className={`flex-1 rounded-[18px] px-3 py-2 text-xs md:text-sm font-semibold text-white shadow-lg transition ${
+                  canSaveCurrentBill
+                    ? 'bg-green-500 hover:bg-green-600'
+                    : 'bg-slate-300 cursor-not-allowed'
+                }`}
+              >
+                PAY {formatMVR(payable)}
+              </button>
+              <button
+                type="button"
+                onClick={printCurrentBill}
+                disabled={!activeBill || !activeBill.items.length}
+                className="flex-1 rounded-[18px] px-3 py-2 text-xs md:text-sm font-semibold text-white shadow-lg transition bg-slate-900 hover:bg-slate-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+              >
+                Print
+              </button>
+            </div>
           </aside>
         </div>
       </div>
@@ -1639,6 +1833,151 @@ export default function POSPage() {
           BACK
         </button>
       </nav>
+
+      {/* Payment Method Selection Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="rounded-[20px] bg-white p-4 md:p-6 shadow-2xl max-w-md w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900">Select Payment Method</h3>
+              <button onClick={() => setShowPaymentModal(false)} className="text-slate-500 hover:text-slate-700">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setPaymentMethod('cash');
+                  setCashGiven('');
+                }}
+                className={`w-full rounded-[16px] border-2 px-4 py-3 text-sm font-semibold transition ${
+                  paymentMethod === 'cash'
+                    ? 'border-green-600 bg-green-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-900 hover:border-green-600'
+                }`}
+              >
+                💵 Cash
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPaymentMethod('card');
+                  setCashGiven('');
+                }}
+                className={`w-full rounded-[16px] border-2 px-4 py-3 text-sm font-semibold transition ${
+                  paymentMethod === 'card'
+                    ? 'border-green-600 bg-green-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-900 hover:border-green-600'
+                }`}
+              >
+                💳 Card
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPaymentMethod('transfer');
+                  setCashGiven('');
+                }}
+                className={`w-full rounded-[16px] border-2 px-4 py-3 text-sm font-semibold transition ${
+                  paymentMethod === 'transfer'
+                    ? 'border-green-600 bg-green-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-900 hover:border-green-600'
+                }`}
+              >
+                📱 Bank Transfer
+              </button>
+            </div>
+
+            {paymentMethod === 'cash' && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Amount Given (MVR)
+                </label>
+                <input
+                  type="number"
+                  value={cashGiven}
+                  onChange={(e) => setCashGiven(e.target.value)}
+                  placeholder="Enter amount given by customer"
+                  className="w-full rounded-[16px] border-2 border-slate-200 px-3 py-2 text-sm focus:border-green-600 focus:outline-none"
+                />
+                {cashGiven && Number(cashGiven) >= payable && (
+                  <div className="mt-2 text-sm font-semibold text-green-600">
+                    Change: {formatMVR(Number(cashGiven) - payable)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPaymentModal(false)}
+                className="flex-1 rounded-[16px] bg-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-400"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!paymentMethod) {
+                    setStatusMessage('Please select a payment method');
+                    return;
+                  }
+                  if (paymentMethod === 'cash') {
+                    if (!cashGiven || Number(cashGiven) < payable) {
+                      setStatusMessage('Please enter a valid amount');
+                      return;
+                    }
+                    // Process cash payment - save bill with cash payment method
+                    if (activeBill) {
+                      const updatedBill: Bill = {
+                        ...activeBill,
+                        status: 'Served',
+                        paymentStatus: 'Paid',
+                        paymentMethod: 'Cash',
+                        cashGiven: Number(cashGiven),
+                        change: Number(cashGiven) - payable,
+                      };
+                      updateBill(updatedBill);
+                      saveDocument('bills', updatedBill.id, updatedBill).catch((error) => {
+                        console.error('Failed to save bill:', error);
+                      });
+                      setActiveBillId('');
+                      setBillToPrint(updatedBill);
+                      setShowPrintConfirmation(true);
+                    }
+                  } else if (paymentMethod === 'card' || paymentMethod === 'transfer') {
+                    // Process card/transfer payment - mark as served
+                    if (activeBill) {
+                      const updatedBill: Bill = {
+                        ...activeBill,
+                        status: 'Served',
+                        paymentStatus: 'Paid',
+                        paymentMethod: paymentMethod === 'card' ? 'Card' : 'Bank transfer',
+                      };
+                      updateBill(updatedBill);
+                      saveDocument('bills', updatedBill.id, updatedBill).catch((error) => {
+                        console.error('Failed to save bill:', error);
+                      });
+                      setActiveBillId('');
+                      setBillToPrint(updatedBill);
+                      setShowPrintConfirmation(true);
+                    }
+                  }
+                  setShowPaymentModal(false);
+                  setPaymentMethod(null);
+                  setCashGiven('');
+                }}
+                disabled={!paymentMethod || (paymentMethod === 'cash' && (!cashGiven || Number(cashGiven) < payable))}
+                className="flex-1 rounded-[16px] bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+              >
+                Confirm Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

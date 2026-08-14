@@ -246,6 +246,7 @@ export interface Bill {
   billNumber?: string;
   title: string;
   table: string;
+  seat?: string;
   items: OrderItem[];
   customerId?: string;
   customerName?: string;
@@ -256,6 +257,8 @@ export interface Bill {
   notes: string;
   paymentMethod: 'Cash' | 'Card' | 'Bank transfer';
   paymentStatus: 'Unpaid' | 'Partial' | 'Paid';
+  cashGiven?: number;
+  change?: number;
   createdAt: string;
 }
 
