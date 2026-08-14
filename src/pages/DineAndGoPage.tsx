@@ -96,8 +96,14 @@ export default function DineAndGoPage() {
     if (!customer) return;
 
     const updated: DineAndGoCustomer = {
-      ...customer,
+      id: customer.id,
+      ...(customer.name ? { name: customer.name } : {}),
+      ...(customer.table ? { table: customer.table } : {}),
+      ...(customer.company ? { company: customer.company } : {}),
       runningTotal: (customer.runningTotal ?? 0) + chargeAmount,
+      ...(customer.lastPaymentDate ? { lastPaymentDate: customer.lastPaymentDate } : {}),
+      ...(customer.payments ? { payments: customer.payments } : {}),
+      ...(customer.createdAt ? { createdAt: customer.createdAt } : {}),
     };
 
     setCustomers((cur) => cur.map((c) => (c.id === customerId ? updated : c)));
@@ -123,15 +129,21 @@ export default function DineAndGoPage() {
       date: new Date().toISOString().split('T')[0],
       amount: amount,
       paymentType: pType,
-      notes: notes || undefined,
+      ...(notes ? { notes } : {}),
     };
 
     const updated: DineAndGoCustomer = {
-      ...customer,
+      id: customer.id,
+      ...(customer.name ? { name: customer.name } : {}),
+      ...(customer.table ? { table: customer.table } : {}),
+      ...(customer.company ? { company: customer.company } : {}),
       runningTotal: newBalance,
       lastPaymentDate: new Date().toISOString().split('T')[0],
       payments: [...(customer.payments || []), paymentRecord],
+      ...(customer.createdAt ? { createdAt: customer.createdAt } : {}),
     };
+
+    console.log('Customer data to save:', JSON.stringify(updated, null, 2));
 
     setCustomers((cur) => cur.map((c) => (c.id === customerId ? updated : c)));
     if (hasFirebaseConfig) {

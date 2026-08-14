@@ -281,8 +281,14 @@ export default function POSPage() {
     const billTotal = bill.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     const updated: DineAndGoCustomer = {
-      ...customer,
+      id: customer.id,
+      ...(customer.name ? { name: customer.name } : {}),
+      ...(customer.table ? { table: customer.table } : {}),
+      ...(customer.company ? { company: customer.company } : {}),
       runningTotal: (customer.runningTotal ?? 0) + billTotal,
+      ...(customer.lastPaymentDate ? { lastPaymentDate: customer.lastPaymentDate } : {}),
+      ...(customer.payments ? { payments: customer.payments } : {}),
+      ...(customer.createdAt ? { createdAt: customer.createdAt } : {}),
     };
 
     setDineAndGoCustomers((cur) => cur.map((c) => (c.id === customerId ? updated : c)));
@@ -2127,7 +2133,10 @@ export default function POSPage() {
                       if (customer) {
                         const newBalance = Math.max(0, (customer.runningTotal ?? 0) - payable);
                         const updated: DineAndGoCustomer = {
-                          ...customer,
+                          id: customer.id,
+                          ...(customer.name ? { name: customer.name } : {}),
+                          ...(customer.table ? { table: customer.table } : {}),
+                          ...(customer.company ? { company: customer.company } : {}),
                           runningTotal: newBalance,
                           lastPaymentDate: new Date().toISOString().split('T')[0],
                           payments: [...(customer.payments || []), {
@@ -2136,7 +2145,8 @@ export default function POSPage() {
                             amount: payable,
                             paymentType: 'partial',
                             notes: `Bill payment - ${activeBill.billNumber}`
-                          }]
+                          }],
+                          ...(customer.createdAt ? { createdAt: customer.createdAt } : {}),
                         };
                         
                         setDineAndGoCustomers((cur) => cur.map((c) => (c.id === activeBill.dineAndGoCustomerId ? updated : c)));
@@ -2229,8 +2239,14 @@ export default function POSPage() {
                               if (!bill || !customer.id) return;
 
                               const updated: DineAndGoCustomer = {
-                                ...customer,
+                                id: customer.id,
+                                ...(customer.name ? { name: customer.name } : {}),
+                                ...(customer.table ? { table: customer.table } : {}),
+                                ...(customer.company ? { company: customer.company } : {}),
                                 runningTotal: (customer.runningTotal ?? 0) + billTotal,
+                                ...(customer.lastPaymentDate ? { lastPaymentDate: customer.lastPaymentDate } : {}),
+                                ...(customer.payments ? { payments: customer.payments } : {}),
+                                ...(customer.createdAt ? { createdAt: customer.createdAt } : {}),
                               };
 
                               setDineAndGoCustomers((cur) => cur.map((c) => (c.id === customer.id ? updated : c)));
@@ -2331,8 +2347,8 @@ export default function POSPage() {
                         const newCustomer: DineAndGoCustomer = {
                           id: `dineandgo-${Date.now()}`,
                           name: newDineAndGoName,
-                          table: newDineAndGoTable || bill.table,
-                          company: newDineAndGoCompany,
+                          ...(newDineAndGoTable ? { table: newDineAndGoTable } : { table: bill.table }),
+                          ...(newDineAndGoCompany ? { company: newDineAndGoCompany } : {}),
                           runningTotal: billTotal,
                           lastPaymentDate: '',
                           payments: [],

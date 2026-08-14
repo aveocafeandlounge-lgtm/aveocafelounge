@@ -4,11 +4,34 @@ export async function loadDineAndGoCustomers(): Promise<DineAndGoCustomer[]> {
   return loadCollection<DineAndGoCustomer>('dineAndGoCustomers', []);
 }
 
+// Deep clean function to remove undefined values recursively
+function cleanUndefinedValues(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return null;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(cleanUndefinedValues).filter(item => item !== undefined && item !== null);
+  }
+  
+  if (typeof obj === 'object') {
+    const cleaned: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        cleaned[key] = cleanUndefinedValues(value);
+      }
+    }
+    return cleaned;
+  }
+  
+  return obj;
+}
+
 export async function saveDineAndGoCustomer(id: string, data: DineAndGoCustomer): Promise<void> {
-  // Remove undefined values before saving to Firestore
-  const cleanedData = Object.fromEntries(
-    Object.entries(data).filter(([_, value]) => value !== undefined)
-  );
+  // Remove undefined values before saving to Firestore (deep clean)
+  const cleanedData = cleanUndefinedValues(data);
+  console.log('Original data:', data);
+  console.log('Cleaned data:', cleanedData);
   return saveDocument('dineAndGoCustomers', id, cleanedData);
 }
 
