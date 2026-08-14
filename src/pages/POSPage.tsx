@@ -21,7 +21,7 @@ import { hasFirebaseConfig } from '../lib/firebase';
 import { loadCollection, saveDocument } from '../lib/firestore';
 import { loadDineAndGoCustomers, saveDineAndGoCustomer } from '../lib/firestore';
 import type { Bill, Customer, MenuItem, OrderItem, TableItem } from '../types';
-import type { DineAndGoCustomer } from '../types/dineAndGo';
+import type { DineAndGoCustomer, ChargeRecord } from '../types/dineAndGo';
 
 const defaultCustomer: Partial<Customer> = {
   name: '',
@@ -280,6 +280,14 @@ export default function POSPage() {
 
     const billTotal = bill.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
+    const chargeRecord: ChargeRecord = {
+      id: `charge-${Date.now()}`,
+      date: new Date().toISOString().split('T')[0],
+      amount: billTotal,
+      source: 'POS Order',
+      notes: `Bill ${bill.billNumber}`,
+    };
+
     const updated: DineAndGoCustomer = {
       id: customer.id,
       ...(customer.name ? { name: customer.name } : {}),
@@ -288,6 +296,7 @@ export default function POSPage() {
       runningTotal: (customer.runningTotal ?? 0) + billTotal,
       ...(customer.lastPaymentDate ? { lastPaymentDate: customer.lastPaymentDate } : {}),
       ...(customer.payments ? { payments: customer.payments } : {}),
+      charges: [...(customer.charges || []), chargeRecord],
       ...(customer.createdAt ? { createdAt: customer.createdAt } : {}),
     };
 
@@ -2238,6 +2247,14 @@ export default function POSPage() {
                             onClick={async () => {
                               if (!bill || !customer.id) return;
 
+                              const chargeRecord: ChargeRecord = {
+                                id: `charge-${Date.now()}`,
+                                date: new Date().toISOString().split('T')[0],
+                                amount: billTotal,
+                                source: 'Bill Conversion',
+                                notes: `Bill ${bill.billNumber}`,
+                              };
+
                               const updated: DineAndGoCustomer = {
                                 id: customer.id,
                                 ...(customer.name ? { name: customer.name } : {}),
@@ -2246,6 +2263,7 @@ export default function POSPage() {
                                 runningTotal: (customer.runningTotal ?? 0) + billTotal,
                                 ...(customer.lastPaymentDate ? { lastPaymentDate: customer.lastPaymentDate } : {}),
                                 ...(customer.payments ? { payments: customer.payments } : {}),
+                                charges: [...(customer.charges || []), chargeRecord],
                                 ...(customer.createdAt ? { createdAt: customer.createdAt } : {}),
                               };
 
@@ -2344,6 +2362,14 @@ export default function POSPage() {
                       onClick={async () => {
                         if (!newDineAndGoName || !bill) return;
 
+                        const chargeRecord: ChargeRecord = {
+                          id: `charge-${Date.now()}`,
+                          date: new Date().toISOString().split('T')[0],
+                          amount: billTotal,
+                          source: 'Bill Conversion',
+                          notes: `Bill ${bill.billNumber}`,
+                        };
+
                         const newCustomer: DineAndGoCustomer = {
                           id: `dineandgo-${Date.now()}`,
                           name: newDineAndGoName,
@@ -2352,6 +2378,7 @@ export default function POSPage() {
                           runningTotal: billTotal,
                           lastPaymentDate: '',
                           payments: [],
+                          charges: [chargeRecord],
                           createdAt: new Date().toISOString(),
                         };
 

@@ -4,7 +4,7 @@ import AppShell from '../components/AppShell';
 import { hasFirebaseConfig } from '../lib/firebase';
 import { loadDineAndGoCustomers, saveDineAndGoCustomer, deleteDineAndGoCustomer } from '../lib/firestore';
 import { formatMVR } from '../lib/mvr';
-import type { DineAndGoCustomer, PaymentRecord } from '../types/dineAndGo';
+import type { DineAndGoCustomer, PaymentRecord, ChargeRecord } from '../types/dineAndGo';
 
 export default function DineAndGoPage() {
   const [customers, setCustomers] = useState<DineAndGoCustomer[]>([]);
@@ -95,6 +95,13 @@ export default function DineAndGoPage() {
     const customer = customers.find((c) => c.id === customerId);
     if (!customer) return;
 
+    const chargeRecord: ChargeRecord = {
+      id: `charge-${Date.now()}`,
+      date: new Date().toISOString().split('T')[0],
+      amount: chargeAmount,
+      source: 'Manual',
+    };
+
     const updated: DineAndGoCustomer = {
       id: customer.id,
       ...(customer.name ? { name: customer.name } : {}),
@@ -103,8 +110,11 @@ export default function DineAndGoPage() {
       runningTotal: (customer.runningTotal ?? 0) + chargeAmount,
       ...(customer.lastPaymentDate ? { lastPaymentDate: customer.lastPaymentDate } : {}),
       ...(customer.payments ? { payments: customer.payments } : {}),
+      charges: [...(customer.charges || []), chargeRecord],
       ...(customer.createdAt ? { createdAt: customer.createdAt } : {}),
     };
+
+    console.log('Customer data to save:', JSON.stringify(updated, null, 2));
 
     setCustomers((cur) => cur.map((c) => (c.id === customerId ? updated : c)));
     if (hasFirebaseConfig) {
@@ -581,7 +591,13 @@ export default function DineAndGoPage() {
                 <p className="text-2xl font-bold text-slate-900">
                   {customers.find((c) => c.id === historyCustomerId)?.name || 'N/A'}
                 </p>
-                <div className="grid grid-cols-2 gap-3 mt-4">
+                <div className="grid grid-cols-3 gap-3 mt-4">
+                  <div>
+                    <p className="text-xs text-slate-500">Total Charged</p>
+                    <p className="text-xl font-bold text-red-600">
+                      {formatMVR((customers.find((c) => c.id === historyCustomerId)?.charges ?? []).reduce((sum, p) => sum + p.amount, 0))}
+                    </p>
+                  </div>
                   <div>
                     <p className="text-xs text-slate-500">Total Paid</p>
                     <p className="text-xl font-bold text-green-600">
@@ -590,7 +606,7 @@ export default function DineAndGoPage() {
                   </div>
                   <div>
                     <p className="text-xs text-slate-500">Outstanding</p>
-                    <p className="text-xl font-bold text-red-600">
+                    <p className="text-xl font-bold text-blue-600">
                       {formatMVR(customers.find((c) => c.id === historyCustomerId)?.runningTotal ?? 0)}
                     </p>
                   </div>
@@ -635,6 +651,37 @@ export default function DineAndGoPage() {
                 })()}
               </div>
 
+              {/* Charge Records Table */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900 mb-3">All Charges</h3>
+                <div className="space-y-2">
+                  {(() => {
+                    const customer = customers.find((c) => c.id === historyCustomerId);
+                    const charges = [...(customer?.charges ?? [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                    return charges.length > 0 ? (
+                      charges.map((charge) => (
+                        <div key={charge.id} className="bg-red-50 rounded-lg p-3 flex items-center justify-between border border-red-100">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold text-slate-900">{charge.date}</p>
+                              {charge.source && (
+                                <span className="text-xs font-semibold px-2 py-1 rounded bg-red-100 text-red-700">
+                                  {charge.source}
+                                </span>
+                              )}
+                            </div>
+                            {charge.notes && <p className="text-xs text-slate-600 mt-1">{charge.notes}</p>}
+                          </div>
+                          <p className="font-semibold text-red-600">+{formatMVR(charge.amount)}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-slate-500 text-center py-4">No charges recorded yet</p>
+                    );
+                  })()}
+                </div>
+              </div>
+
               {/* Payment Records Table */}
               <div>
                 <h3 className="text-sm font-semibold text-slate-900 mb-3">All Payments</h3>
@@ -644,7 +691,7 @@ export default function DineAndGoPage() {
                     const payments = [...(customer?.payments ?? [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
                     return payments.length > 0 ? (
                       payments.map((payment) => (
-                        <div key={payment.id} className="bg-slate-50 rounded-lg p-3 flex items-center justify-between">
+                        <div key={payment.id} className="bg-green-50 rounded-lg p-3 flex items-center justify-between border border-green-100">
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-semibold text-slate-900">{payment.date}</p>
@@ -658,7 +705,7 @@ export default function DineAndGoPage() {
                             </div>
                             {payment.notes && <p className="text-xs text-slate-600 mt-1">{payment.notes}</p>}
                           </div>
-                          <p className="font-semibold text-slate-900">{formatMVR(payment.amount)}</p>
+                          <p className="font-semibold text-green-600">-{formatMVR(payment.amount)}</p>
                         </div>
                       ))
                     ) : (

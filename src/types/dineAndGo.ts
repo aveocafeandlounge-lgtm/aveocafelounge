@@ -7,6 +7,15 @@ export type PaymentRecord = {
   notes?: string;
 };
 
+// Charge record type (for tracking when charges are added)
+export type ChargeRecord = {
+  id?: string;
+  date: string; // ISO date string
+  amount: number;
+  notes?: string;
+  source?: string; // e.g., 'POS Order', 'Manual', 'Bill Conversion'
+};
+
 // Dine-and-Go customer record type
 export type DineAndGoCustomer = {
   id?: string; // Firestore doc ID or local ID
@@ -16,5 +25,6 @@ export type DineAndGoCustomer = {
   runningTotal?: number;
   lastPaymentDate?: string; // ISO date string
   payments?: PaymentRecord[]; // Payment history
+  charges?: ChargeRecord[]; // Charge history
   createdAt?: string; // When customer record was created
 };
