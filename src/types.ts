@@ -30,6 +30,22 @@ export interface TableItem {
   section: 'Indoor' | 'Outdoor' | 'VIP';
 }
 
+export type Floor = 'Ground Floor & Garden' | '1st Floor';
+
+export interface LayoutTable {
+  name: string;
+  floor: Floor;
+  section: 'Indoor' | 'Garden';
+  seats: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  shape?: 'square' | 'rectangle';
+}
+
+export type TableStatus = 'Available' | 'Occupied' | 'Reserved' | 'Cleaning' | 'Out of Service';
+
 export interface StaffMember {
   id: string;
   name: string;

@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Check, Zap, Users, BarChart3, ShoppingCart, Settings, Shield, Smartphone, HeadphonesIcon, Star, ArrowRight } from 'lucide-react';
+import { Check, Zap, Users, BarChart3, ShoppingCart, Shield, Smartphone } from 'lucide-react';
 
 const LandingPage = () => {
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',

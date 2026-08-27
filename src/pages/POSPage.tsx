@@ -14,13 +14,15 @@ import {
   Maximize,
   Minimize,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import AppShell from '../components/AppShell';
+import GroundFloorPlan from '../components/GroundFloorPlan';
+import FirstFloorPlan from '../components/FirstFloorPlan';
 import { formatMVR } from '../lib/mvr';
 import { hasFirebaseConfig } from '../lib/firebase';
 import { loadCollection, saveDocument } from '../lib/firestore';
 import { loadDineAndGoCustomers, saveDineAndGoCustomer } from '../lib/firestore';
-import type { Bill, Customer, MenuItem, OrderItem, TableItem } from '../types';
+import type { Bill, Customer, MenuItem, OrderItem, TableItem, Floor } from '../types';
 import type { DineAndGoCustomer, ChargeRecord } from '../types/dineAndGo';
 
 const defaultCustomer: Partial<Customer> = {
@@ -97,6 +99,10 @@ function createEmptyBill(tableName: string, seatNumber: string, existingBills: B
 }
 
 export default function POSPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const tableParam = searchParams.get('table');
+  
   const [products, setProducts] = useState<MenuItem[]>([]);
   const [tables, setTables] = useState<TableItem[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -128,6 +134,30 @@ export default function POSPage() {
   const [selectedOrderType, setSelectedOrderType] = useState<'Dine-in' | 'Takeaway'>('Dine-in');
   const [selectedPaxForNewOrder, setSelectedPaxForNewOrder] = useState(1);
   const [selectedDineAndGoCustomer, setSelectedDineAndGoCustomer] = useState<string>('');
+  const [selectedFloorForNewOrder, setSelectedFloorForNewOrder] = useState<Floor>('Ground Floor & Garden');
+
+  // Generate seat code like I1S1 (Indoor Table 1 Seat 1), G1S1 (Garden Table 1 Seat 1), or F1S1 (Floor 1 Table 1 Seat 1)
+  const generateSeatCode = (tableName: string, seat: string, floor: Floor, section?: string) => {
+    const tableNum = tableName.replace('Table ', '').replace(/^0+/, '');
+    
+    // Determine prefix based on section and floor
+    let prefix: string;
+    if (section === 'Outdoor' || section === 'Garden') {
+      prefix = 'G'; // Garden
+    } else if (floor === '1st Floor') {
+      prefix = 'F'; // 1st Floor
+    } else {
+      prefix = 'I'; // Indoor (Ground Floor Indoor)
+    }
+    
+    return `${prefix}${tableNum}${seat}`;
+  };
+
+  const displaySeatCode = useMemo(() => {
+    if (!selectedTableForNewOrder || !selectedSeatForNewOrder) return 'S1';
+    const selectedTable = tables.find(t => t.name === selectedTableForNewOrder);
+    return generateSeatCode(selectedTableForNewOrder, selectedSeatForNewOrder, selectedFloorForNewOrder, selectedTable?.section);
+  }, [selectedTableForNewOrder, selectedSeatForNewOrder, selectedFloorForNewOrder, tables]);
   const [dineAndGoCustomers, setDineAndGoCustomers] = useState<DineAndGoCustomer[]>([]);
   const [showPrintConfirmation, setShowPrintConfirmation] = useState(false);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
@@ -168,7 +198,6 @@ export default function POSPage() {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, []);
-  const navigate = useNavigate();
   const defaultTaxRateStorageKey = 'posDefaultTaxRate';
   const useDefaultTaxRateStorageKey = 'posUseDefaultTaxRate';
 
@@ -216,6 +245,33 @@ export default function POSPage() {
       const billsWithItems = loadedBills.filter((bill) => bill.items.length > 0);
       setBills(billsWithItems);
       setActiveBillId('');
+
+      // If table parameter exists, create new bill for that table
+      if (tableParam) {
+        const tableName = decodeURIComponent(tableParam);
+        const activeBillsForTable = billsWithItems.filter(
+          bill => bill.table === tableName && bill.status !== 'Served'
+        );
+        
+        if (activeBillsForTable.length === 0) {
+          const newBill = createEmptyBill(tableName, 'S1', billsWithItems, 'Dine-in', useDefaultTaxRate ? defaultTaxRate : 0);
+          if (newBill.billNumber && !newBill.billNumber.includes('MAX')) {
+            setBills((current) => [...current, newBill]);
+            setActiveBillId(newBill.id);
+            if (hasFirebaseConfig) {
+              saveDocument('bills', newBill.id, newBill).catch((error) => {
+                console.error('Failed to save new bill for table:', error);
+              });
+            }
+          }
+        } else {
+          // Select the first active bill for this table
+          setActiveBillId(activeBillsForTable[0].id);
+        }
+        
+        // Clear the URL parameter
+        navigate('/pos');
+      }
 
       if (!loadedTables.length) {
       }
@@ -949,19 +1005,6 @@ export default function POSPage() {
 
   const taxAmount = Math.round((subtotal * (activeBill?.tax ?? 0)) / 100);
 
-  const availableTables = useMemo(
-    () =>
-      tables.filter(
-        (table) => {
-          const activeBillsForTable = bills.filter(
-            bill => bill.table === table.name && bill.status !== 'Served'
-          );
-          return activeBillsForTable.length < 6;
-        }
-      ),
-    [tables, bills]
-  );
-
   const filteredProducts = useMemo(
     () =>
       products
@@ -1114,9 +1157,9 @@ export default function POSPage() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    {/* Left side - Form */}
-                    <div className="space-y-2">
+                  <div className="space-y-3">
+                    {/* Form fields at top */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       {/* Order Type Selection */}
                       <div>
                         <label className="block text-xs font-semibold text-slate-900 mb-2">
@@ -1148,39 +1191,6 @@ export default function POSPage() {
                         </div>
                       </div>
 
-                      {/* Table Selection - Only for Dine-in */}
-                      {selectedOrderType === 'Dine-in' && (
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-900 mb-2">
-                            Select Table ({availableTables.length} available)
-                          </label>
-                          {availableTables.length > 0 ? (
-                            <div className="grid grid-cols-2 gap-2">
-                              {availableTables.filter(table => !['Table 7', 'Table 8', 'Table 9'].includes(table.name)).map((table) => (
-                                <button
-                                  key={table.id}
-                                  type="button"
-                                  onClick={() => setSelectedTableForNewOrder(table.id)}
-                                  className={`rounded-[16px] border-2 p-3 text-center transition ${
-                                    selectedTableForNewOrder === table.id
-                                      ? 'border-green-500 bg-green-50'
-                                      : 'border-slate-200 bg-slate-50 hover:border-slate-300'
-                                  }`}
-                                >
-                                  <p className="text-sm font-semibold text-slate-900">{table.name}</p>
-                                  <p className="text-xs text-slate-500 mt-1">{table.section}</p>
-                                  <p className="text-xs text-slate-500">Max: {table.seats} pax</p>
-                                </button>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="rounded-[16px] border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
-                              No tables available. Add tables in Table Management first.
-                            </div>
-                          )}
-                        </div>
-                      )}
-
                       {/* Seat Selection - Only for Dine-in */}
                       {selectedOrderType === 'Dine-in' && (
                         <div>
@@ -1188,8 +1198,8 @@ export default function POSPage() {
                             Selected Seat
                           </label>
                           <div className="w-full rounded-[16px] border-2 border-slate-200 bg-slate-50 p-3 text-center">
-                            <p className="text-sm font-semibold text-slate-900">{selectedSeatForNewOrder}</p>
-                            <p className="text-xs text-slate-500 mt-1">Select from seating canvas</p>
+                            <p className="text-sm font-semibold text-slate-900">{displaySeatCode}</p>
+                            <p className="text-xs text-slate-500 mt-1">Select from floor plan</p>
                           </div>
                         </div>
                       )}
@@ -1236,130 +1246,86 @@ export default function POSPage() {
                       </div>
                     </div>
 
-                    {/* Right side - Seating Canvas */}
-                    <div className="space-y-2">
-                      {selectedOrderType === 'Dine-in' && (
-                        <>
-                          <h3 className="text-sm font-semibold text-slate-900">Seating Canvas</h3>
-                          
-                          {/* Entrance Door - above Table 3 & 4 */}
-                          <div className="flex justify-center">
-                            <div className="w-24 h-12 rounded-lg border-4 border-slate-600 bg-slate-100 flex items-center justify-center">
-                              <span className="text-xs font-semibold text-slate-600">ENTRANCE</span>
+                    {/* Floor Plan below in landscape */}
+                    {selectedOrderType === 'Dine-in' && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-semibold text-slate-900">Floor Plan</h3>
+                            <div className="flex gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedFloorForNewOrder('Ground Floor & Garden')}
+                                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                                  selectedFloorForNewOrder === 'Ground Floor & Garden'
+                                    ? 'bg-green-600 text-white'
+                                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                                }`}
+                              >
+                                🟢 Ground Floor
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedFloorForNewOrder('1st Floor')}
+                                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                                  selectedFloorForNewOrder === '1st Floor'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                                }`}
+                              >
+                                🔵 1st Floor
+                              </button>
                             </div>
                           </div>
-
-                          {/* Seating Layout - 2 columns x 3 rows */}
-                          <div className="grid grid-cols-2 gap-3">
-                            {[1, 2, 3, 4, 5, 6].map((tableNum) => {
-                              const displayNumMap: Record<number, number> = { 1: 3, 2: 4, 3: 2, 4: 5, 5: 1 };
-                              const displayNum = displayNumMap[tableNum] || tableNum;
-                              const tableName = `Table ${tableNum}`;
-                              const tableBills = bills.filter(bill => bill.table === tableName && bill.status !== 'Served');
-                              const occupiedSeats = tableBills.map(bill => bill.seat);
-                              
-                              return (
-                                <div key={tableNum} className="rounded-[14px] border-2 border-slate-200 bg-slate-50 p-2">
-                                  <p className="text-xs font-semibold text-slate-900 mb-1 text-center">Table {displayNum}</p>
-                                  
-                                  {/* Table with 6 chairs - 3 on top, 3 on bottom */}
-                                  <div className="flex flex-col items-center justify-center gap-1">
-                                    {/* Top side chairs */}
-                                    <div className="flex gap-1">
-                                      {['S1', 'S2', 'S3'].map((seat) => {
-                                        const isOccupied = occupiedSeats.includes(seat);
-                                        const isSelected = selectedSeatForNewOrder === seat && selectedTableForNewOrder === tableName;
-                                        return (
-                                          <button
-                                            key={seat}
-                                            type="button"
-                                            onClick={() => {
-                                              setSelectedSeatForNewOrder(seat);
-                                              setSelectedTableForNewOrder(tableName);
-                                            }}
-                                            disabled={isOccupied}
-                                            className={`w-9 h-9 rounded-lg text-xs font-semibold transition ${
-                                              isOccupied
-                                                ? 'bg-red-600 text-white cursor-not-allowed'
-                                                : isSelected
-                                                ? 'bg-green-600 text-white'
-                                                : 'bg-blue-200 text-slate-700 hover:bg-blue-300'
-                                            }`}
-                                          >
-                                            {seat}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                    
-                                    {/* Table - longer horizontal */}
-                                    <div className="w-32 h-9 rounded-lg bg-amber-200 border-2 border-amber-300 flex items-center justify-center">
-                                      <span className="text-xs font-semibold text-amber-800">{displayNum}</span>
-                                    </div>
-                                    
-                                    {/* Bottom side chairs */}
-                                    <div className="flex gap-1">
-                                      {['S4', 'S5', 'S6'].map((seat) => {
-                                        const isOccupied = occupiedSeats.includes(seat);
-                                        const isSelected = selectedSeatForNewOrder === seat && selectedTableForNewOrder === tableName;
-                                        return (
-                                          <button
-                                            key={seat}
-                                            type="button"
-                                            onClick={() => {
-                                              setSelectedSeatForNewOrder(seat);
-                                              setSelectedTableForNewOrder(tableName);
-                                            }}
-                                            disabled={isOccupied}
-                                            className={`w-9 h-9 rounded-lg text-xs font-semibold transition ${
-                                              isOccupied
-                                                ? 'bg-red-600 text-white cursor-not-allowed'
-                                                : isSelected
-                                                ? 'bg-green-600 text-white'
-                                                : 'bg-blue-200 text-slate-700 hover:bg-blue-300'
-                                            }`}
-                                          >
-                                            {seat}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                          <div className="flex gap-2 text-xs text-slate-500">
+                            <span><strong>I</strong> = Indoor</span>
+                            <span><strong>G</strong> = Garden</span>
+                            <span><strong>F</strong> = 1st Floor</span>
                           </div>
-
-                          {/* Counter - outside Table 1 container */}
-                          <div className="flex justify-start">
-                            <div className="w-32 h-7 rounded-lg bg-blue-200 border-2 border-blue-300 flex items-center justify-center">
-                              <span className="text-xs font-semibold text-blue-800">COUNTER</span>
-                            </div>
-                          </div>
-
-                          {/* Legend */}
-                          <div className="flex items-center justify-center gap-4 text-xs">
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 rounded bg-blue-200"></div>
-                              <span>Available</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 rounded bg-red-600"></div>
-                              <span>Occupied</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 rounded bg-green-600"></div>
-                              <span>Selected</span>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                      {selectedOrderType === 'Takeaway' && (
-                        <div className="rounded-[14px] border border-slate-200 bg-slate-50 p-4 text-center text-xs text-slate-500">
-                          Seating canvas is only available for Dine-in orders
                         </div>
-                      )}
-                    </div>
+                        
+                        <div className="overflow-auto rounded-3xl border bg-slate-100 p-3">
+                          {selectedFloorForNewOrder === 'Ground Floor & Garden' ? (
+                            <GroundFloorPlan
+                              tables={tables}
+                              occupiedTableNames={new Set(bills.filter(bill => bill.status !== 'Served').map(bill => bill.table))}
+                              onEdit={() => {}}
+                              onDelete={() => {}}
+                              onTableClick={(table) => {
+                                setSelectedTableForNewOrder(table.name);
+                              }}
+                              selectedTable={selectedTableForNewOrder}
+                              selectedSeat={selectedSeatForNewOrder}
+                              onSeatClick={(seat, table) => {
+                                setSelectedTableForNewOrder(table.name);
+                                setSelectedSeatForNewOrder(seat);
+                              }}
+                            />
+                          ) : (
+                            <FirstFloorPlan
+                              tables={tables}
+                              occupiedTableNames={new Set(bills.filter(bill => bill.status !== 'Served').map(bill => bill.table))}
+                              onEdit={() => {}}
+                              onDelete={() => {}}
+                              onTableClick={(table) => {
+                                setSelectedTableForNewOrder(table.name);
+                              }}
+                              selectedTable={selectedTableForNewOrder}
+                              selectedSeat={selectedSeatForNewOrder}
+                              onSeatClick={(seat, table) => {
+                                setSelectedTableForNewOrder(table.name);
+                                setSelectedSeatForNewOrder(seat);
+                              }}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {selectedOrderType === 'Takeaway' && (
+                      <div className="rounded-[14px] border border-slate-200 bg-slate-50 p-4 text-center text-xs text-slate-500">
+                        Floor plan is only available for Dine-in orders
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

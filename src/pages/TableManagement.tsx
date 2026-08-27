@@ -1,9 +1,12 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Plus, Trash2, Edit3 } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
+import GroundFloorPlan from '../components/GroundFloorPlan';
+import FirstFloorPlan from '../components/FirstFloorPlan';
 import { hasFirebaseConfig } from '../lib/firebase';
 import { loadCollection, saveDocument, deleteDocument } from '../lib/firestore';
-import type { TableItem, Bill } from '../types';
+import type { TableItem, Bill, Floor } from '../types';
 
 const defaultTable: Partial<TableItem> = {
   name: '',
@@ -12,8 +15,10 @@ const defaultTable: Partial<TableItem> = {
 };
 
 export default function TableManagement() {
+  const navigate = useNavigate();
   const [tables, setTables] = useState<TableItem[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
+  const [selectedFloor, setSelectedFloor] = useState<Floor>('Ground Floor & Garden');
   
   useEffect(() => {
     if (!hasFirebaseConfig) {
@@ -74,6 +79,16 @@ export default function TableManagement() {
     setTables((current) => current.filter((table) => table.id !== id));
     if (hasFirebaseConfig) {
       deleteDocument('tables', id).catch((error) => console.error('Failed to delete table:', error));
+    }
+  };
+
+  const handleTableClick = (table: TableItem) => {
+    const activeBill = bills.find((bill) => bill.table === table.name && bill.status !== 'Served');
+    if (activeBill) {
+      navigate(`/pos/bill/${activeBill.id}`);
+    } else {
+      // Create new order for this table
+      navigate(`/pos?table=${encodeURIComponent(table.name)}`);
     }
   };
 
@@ -147,40 +162,49 @@ export default function TableManagement() {
                 <h3 className="text-xl font-semibold text-slate-900">Live table map</h3>
                 <p className="text-sm text-slate-600">Visual sections for dine-in and VIP seating. <span className="font-semibold text-green-600">{occupiedTableNames.size} occupied</span></p>
               </div>
-              <span className="rounded-full bg-slate-800 px-3 py-1 text-xs uppercase tracking-[0.24em] text-slate-300">{tables.length} tables</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedFloor('Ground Floor & Garden')}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    selectedFloor === 'Ground Floor & Garden'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                  }`}
+                >
+                  🟢 Ground Floor & Garden
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFloor('1st Floor')}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    selectedFloor === '1st Floor'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                  }`}
+                >
+                  🔵 1st Floor
+                </button>
+              </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {tables.map((table) => {
-                const isOccupied = occupiedTableNames.has(table.name);
-                return (
-                  <div 
-                    key={table.id} 
-                    className={`rounded-3xl border-2 px-4 py-4 transition ${
-                      isOccupied 
-                        ? 'border-red-400 bg-red-50' 
-                        : 'border-slate-200 bg-slate-100'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-base font-semibold text-slate-900">{table.name}</p>
-                        <p className="text-sm text-slate-600">{table.section} · {table.seats} seats</p>
-                        {isOccupied && (
-                          <p className="mt-2 text-sm font-semibold text-red-600">🔴 OCCUPIED</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => beginEdit(table)} className="rounded-2xl border-2 border-green-700 bg-green-600 px-3 py-2 text-white hover:bg-green-700">
-                          <Edit3 className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => deleteTable(table.id)} className="rounded-2xl bg-rose-600 px-3 py-2 text-white hover:bg-rose-500">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="mt-4">
+              {selectedFloor === 'Ground Floor & Garden' ? (
+                <GroundFloorPlan
+                  tables={tables}
+                  occupiedTableNames={occupiedTableNames}
+                  onEdit={beginEdit}
+                  onDelete={deleteTable}
+                  onTableClick={handleTableClick}
+                />
+              ) : (
+                <FirstFloorPlan
+                  tables={tables}
+                  occupiedTableNames={occupiedTableNames}
+                  onEdit={beginEdit}
+                  onDelete={deleteTable}
+                  onTableClick={handleTableClick}
+                />
+              )}
             </div>
           </div>
         </section>
