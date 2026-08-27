@@ -215,7 +215,6 @@ const LandingPage = () => {
                 </ul>
                 <button
                   onClick={() => {
-                    setSelectedPlan(plan.name);
                     setFormData({ ...formData, plan: plan.name });
                     document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' });
                   }}
