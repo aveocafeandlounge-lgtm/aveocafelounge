@@ -12,7 +12,7 @@ interface AuthContextState {
 }
 
 const AuthContext = createContext<AuthContextState | undefined>(undefined);
-const STORAGE_KEY = 'loavashi-user';
+const STORAGE_KEY = 'aveo-user';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signInWithEmailAndPassword(auth, email, password);
       const userData: AppUser = {
         id: email,
-        name: role === 'admin' ? 'Loavashi Admin' : 'Cashier User',
+        name: role === 'admin' ? "Aveo Admin" : 'Cashier User',
         role,
         email,
       };

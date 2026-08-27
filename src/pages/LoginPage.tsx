@@ -4,11 +4,11 @@ import Swal from 'sweetalert2';
 import { useAuth } from '../context/AuthContext';
 import type { UserRole } from '../types';
 
-const logo = '/logo.jpeg';
+const logo = '/logo.jpg';
 
 const defaultCredentials = {
-  admin: { email: 'admin@loavashi.com', password: 'Admin123' },
-  cashier: { email: 'cashier@loavashi.com', password: 'Cashier123' },
+  admin: { email: 'aveocafeandlounge@gmail.com', password: 'Aveo@123' },
+  cashier: { email: 'cashier@aveocafe-lounge.com', password: 'Aveo@123' },
 };
 
 export default function LoginPage() {
@@ -39,9 +39,9 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-800 mb-4">
-            <img src={logo} alt="Loavashi Hub" className="h-14 w-14 rounded-full object-cover" />
+            <img src={logo} alt="Aveo Cafe' & Lounge" className="h-14 w-14 rounded-full object-cover" />
           </div>
-          <h1 className="text-3xl font-semibold text-white">Loavashi Hub</h1>
+          <h1 className="text-3xl font-semibold text-white">Aveo Cafe' & Lounge</h1>
           <p className="text-sm text-slate-400 mt-2">Restaurant Management System</p>
         </div>
 
@@ -106,7 +106,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-xs text-slate-500 mt-6">
-          © {new Date().getFullYear()} Loavashi Hub. All rights reserved.
+          © {new Date().getFullYear()} Aveo Cafe' & Lounge. All rights reserved.
         </p>
       </div>
     </div>

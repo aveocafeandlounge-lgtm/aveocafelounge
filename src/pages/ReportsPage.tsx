@@ -309,7 +309,7 @@ export default function ReportsPage() {
     const dateObj = new Date(report.date);
     const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
 
-    let text = `📊 *Loavashi Cafe - Daily Report*\n`;
+    let text = `📊 *Aveo Cafe' & Lounge - Daily Report*\n`;
     text += `📅 ${dateStr}\n\n`;
 
     text += `💰 *REVENUE*\n`;
@@ -628,7 +628,7 @@ export default function ReportsPage() {
     const data = write(workbook, { bookType: 'xlsx', type: 'array' });
     saveAs(
       new Blob([data], { type: 'application/octet-stream' }),
-      `loavashi-reports-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      `aveo-reports-${new Date().toISOString().slice(0, 10)}.xlsx`,
     );
   };
 
@@ -655,7 +655,7 @@ export default function ReportsPage() {
         heightLeft -= pageHeight;
       }
 
-      pdf.save(`loavashi-reports-${new Date().toISOString().slice(0, 10)}.pdf`);
+      pdf.save(`aveo-reports-${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch {
       alert('Failed to export PDF');
     }
@@ -670,7 +670,7 @@ export default function ReportsPage() {
       const image = canvas.toDataURL('image/jpeg', 0.95);
       const link = document.createElement('a');
       link.href = image;
-      link.download = `loavashi-ddr-${selectedDailyDate}.jpg`;
+      link.download = `aveo-ddr-${selectedDailyDate}.jpg`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

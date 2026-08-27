@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { LogOut, LayoutDashboard, ShoppingCart, ShoppingBag, Coffee, Table, Users2, ClipboardList, Box, Layers, BookOpen, BarChart3, Clock, CheckCircle2, ListChecks, X, DollarSign, Package, Brain, History, Wine, Menu } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-const logo = '/logo.jpeg';
+const logo = '/logo.jpg';
 
 const adminNav = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -60,9 +60,9 @@ export default function AppShell({ children }: AppShellProps) {
       <aside className={`fixed inset-y-0 left-0 w-64 transform bg-white border-r border-slate-200 p-4 z-40 transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="Loavashi Hub" className="h-9 w-9 rounded-full border" />
+            <img src={logo} alt="Aveo Cafe' & Lounge" className="h-9 w-9 rounded-full border" />
             <div>
-              <p className="text-sm font-semibold">Loavashi Hub</p>
+              <p className="text-sm font-semibold">Aveo Cafe' & Lounge</p>
               <p className="text-xs text-slate-500">{user?.role === 'admin' ? 'Admin' : 'Cashier'}</p>
             </div>
           </div>

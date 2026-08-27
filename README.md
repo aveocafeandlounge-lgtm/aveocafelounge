@@ -1,6 +1,6 @@
-# Loavashi Hub - Restaurant Management System
+# Aveo Cafe' & Lounge - Restaurant Management System
 
-Loavashi Hub is a comprehensive, modern cafe and restaurant management system built with React, TypeScript, Vite, Tailwind CSS, Framer Motion, Firebase, and PWA support. Designed specifically for Maldivian restaurant workflows with MVR (Maldivian Rufiyaa) currency support.
+Aveo Cafe' & Lounge is a comprehensive, modern cafe and restaurant management system built with React, TypeScript, Vite, Tailwind CSS, Framer Motion, Firebase, and PWA support. Designed specifically for Maldivian restaurant workflows with MVR (Maldivian Rufiyaa) currency support.
 
 ## 🌟 Features
 
@@ -64,7 +64,7 @@ The system includes a comprehensive database of **144+ traditional Maldivian rec
 1. **Clone the repository**
    ```bash
    git clone https://github.com/visionadee-cmyk/loavashihub.git
-   cd loavashihub
+   cd aveo-cafe-lounge
    ```
 
 2. **Install dependencies**
@@ -79,20 +79,20 @@ The system includes a comprehensive database of **144+ traditional Maldivian rec
 
 4. **Add Firebase configuration** to `.env`:
    ```env
-   VITE_FIREBASE_API_KEY=your_api_key
-   VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-   VITE_FIREBASE_PROJECT_ID=your_project_id
-   VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
-   VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-   VITE_FIREBASE_APP_ID=your_app_id
-   VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
+   VITE_FIREBASE_API_KEY=AIzaSyAbWWDV00qaN5lyBygs5xPrjkm_8dzYEss
+   VITE_FIREBASE_AUTH_DOMAIN=aveocafe-lounge.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=aveocafe-lounge
+   VITE_FIREBASE_STORAGE_BUCKET=aveocafe-lounge.firebasestorage.app
+   VITE_FIREBASE_MESSAGING_SENDER_ID=83831360825
+   VITE_FIREBASE_APP_ID=1:83831360825:web:ff45923cd1adc1612fece8
+   VITE_FIREBASE_MEASUREMENT_ID=G-K0GL62TQVS
    ```
 
 5. **Add Cloudinary configuration** (optional, for image uploads):
    ```env
-   VITE_CLOUDINARY_CLOUD_NAME=your_cloud_name
-   VITE_CLOUDINARY_UPLOAD_PRESET=your_unsigned_preset
-   VITE_CLOUDINARY_FOLDER=menu_items
+   VITE_CLOUDINARY_CLOUD_NAME=vklgcboe
+   VITE_CLOUDINARY_UPLOAD_PRESET=aveocafe
+   VITE_CLOUDINARY_FOLDER=aveo_items
    ```
 
 6. **Start development server**
@@ -107,8 +107,8 @@ The system includes a comprehensive database of **144+ traditional Maldivian rec
 
 ### Demo Accounts
 
-- **Admin**: `loavashihub@gmail.com` / `Loavashi123`
-- **Cashier**: `cashier@loavashi.com` / `cashier123`
+- **Admin**: `aveocafeandlounge@gmail.com` / `Aveo@123`
+- **Cashier**: `cashier@aveocafe-lounge.com` / `Aveo@123`
 
 ## 🔥 Firebase Integration
 
@@ -156,7 +156,7 @@ The application includes full Progressive Web App capabilities:
 - **Manifest** - `/manifest.json` for installability
 - **Service Worker** - `/service-worker.js` for offline caching
 - **Offline Support** - Works without internet connection
-- **App Icon** - Uses `public/logo.jpeg` as PWA icon
+- **App Icon** - Uses `public/logo.jpg` as PWA icon
 - **Install Prompt** - Automatic update notifications
 
 ## 🏗️ Build and Deploy
@@ -196,9 +196,9 @@ The repository includes `.github/workflows/ci.yml` for continuous integration:
 ## 📁 Project Structure
 
 ```
-loavashihub/
+aveo-cafe-lounge/
 ├── public/                    # Static assets
-│   ├── logo.jpeg             # Main logo and PWA icon
+│   ├── logo.jpg              # Main logo and PWA icon
 │   ├── manifest.json         # PWA manifest
 │   ├── service-worker.js     # PWA service worker
 │   └── *.svg                 # Various logo formats
@@ -255,8 +255,11 @@ loavashihub/
 ├── scripts/                  # Utility scripts
 │   ├── seedFirestore.js      # Database seeding
 │   ├── createFirebaseAuthUsers.js
+│   ├── importMenuJson.js     # Import menu from menu.json
 │   ├── migrateMenuIds.js
 │   └── migrateInventoryIds.js
+├── menu.json                 # Menu data for import
+├── serviceAccountKey.json    # Firebase service account credentials
 ├── .github/
 │   └── workflows/
 │       └── ci.yml            # GitHub Actions CI
@@ -355,7 +358,7 @@ The Reports page provides comprehensive business intelligence:
 
 ## 📄 License
 
-This project is proprietary software developed for Loavashi Hub Cafe.
+This project is proprietary software developed for Aveo Cafe' & Lounge.
 
 ## 🆘 Support
 
@@ -363,6 +366,42 @@ For support and questions:
 - Check the `USER_MANUAL.md` for user documentation
 - Review the code comments for technical details
 - Check Firebase and Vercel documentation for deployment issues
+
+## 📋 Menu Import
+
+To import menu items from `menu.json` to Firebase Firestore:
+
+1. Ensure your `serviceAccountKey.json` is properly configured with Firebase admin credentials
+2. Run the import script:
+   ```bash
+   npm run import:menu
+   # or
+   node scripts/importMenuJson.js
+   ```
+
+The script will:
+- Parse the `menu.json` file in the project root
+- Extract all menu categories and items
+- Parse prices from MVR format (e.g., "MVR 95" → 95)
+- Create menu items in the `menuItems` collection in Firestore
+- Generate unique IDs using slugified item names
+- Log each imported item with its category and price
+
+## 🔐 Firebase User Management
+
+To create Firebase Auth users:
+
+1. Update user credentials in `scripts/createFirebaseAuthUsers.js`
+2. Run the script:
+   ```bash
+   npm run create:auth-users
+   # or
+   node scripts/createFirebaseAuthUsers.js
+   ```
+
+Current users:
+- Admin: aveocafeandlounge@gmail.com / Aveo@123
+- Cashier: cashier@aveocafe-lounge.com / Aveo@123
 
 ## 🗺️ Roadmap
 

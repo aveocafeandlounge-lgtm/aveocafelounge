@@ -1,0 +1,249 @@
+{
+  "restaurant": "AVEO Café & Lounge",
+  "menu_items": [
+    {
+      "category": "Appetizers",
+      "items": [
+        { "name": "Dirty Fries", "price": "MVR 95", "description": "Fries. Cheese. Sauces. Toppings. Loaded." },
+        { "name": "Mashed potato & Chicken Steak", "price": "MVR 85", "description": "Smooth mashed potatoes, tender chicken steak, and rich gravy." },
+        { "name": "Caesar Salad", "price": "MVR 75", "description": "Crisp greens topped with chicken, parmesan, croutons, and Caesar sauce." }
+      ]
+    },
+    {
+      "category": "Main Dishes",
+      "items": [
+        { "name": "Chicken & Cheese Kottu", "price": "MVR 85", "description": "Stir-fried roti with chicken, vegetables, spices, and melted cheese." },
+        { "name": "Bamigoreng", "price": "MVR 80", "description": "Noodles, tender chicken, fresh veggies, egg, and flavorful seasoning." },
+        { "name": "Nasigoreng Kanboyam", "price": "MVR 85", "description": "Wok-fried rice with chicken, egg, vegetables, chili, and aromatic spices." },
+        { "name": "3 Cheese Pizza", "price": "MVR 160", "description": "Pizza topped with mozzarella, cheddar, and parmesan cheese on a crispy crust." },
+        { "name": "Chicken Wrap", "price": "MVR 85", "description": "Tender chicken, crisp vegetables, and sauce, all wrapped in a soft tortilla." },
+        { "name": "Deviled Chicken", "price": "MVR 65" },
+        { "name": "Deviled Sausage", "price": "MVR 65" },
+        { "name": "Butter Chicken", "price": "MVR 75" },
+        { "name": "Chicken Curry", "price": "MVR 50" }
+      ]
+    },
+    {
+      "category": "Combo Meals",
+      "items": [
+        { "name": "Kottu Roshi - Whole chicken", "price": "MVR 150" }
+      ]
+    },
+    {
+      "category": "Kottu",
+      "items": [
+        { "name": "Chicken & Cheese Kottu", "price": "MVR 85" },
+        { "name": "Tuna Kottu", "price": "MVR 65" },
+        { "name": "Chicken Kottu", "price": "MVR 70" },
+        { "name": "Valhomas Cheese Kottu", "price": "MVR 85" },
+        { "name": "Mix Kottu", "price": "MVR 95" },
+        { "name": "Beef Kottu", "price": "MVR 85" }
+      ]
+    },
+    {
+      "category": "Noodles",
+      "items": [
+        { "name": "Chicken Noodles", "price": "MVR 70" },
+        { "name": "Tuna Noodles", "price": "MVR 65" },
+        { "name": "Valhomas Noodles", "price": "MVR 70" },
+        { "name": "Bamigoreng", "price": "MVR 80" }
+      ]
+    },
+    {
+      "category": "Rice",
+      "items": [
+        { "name": "Chicken Rice", "price": "MVR 65" },
+        { "name": "Tuna Rice", "price": "MVR 65" },
+        { "name": "Vegetable Rice", "price": "MVR 55" },
+        { "name": "Nasigoreng Kanboyam", "price": "MVR 85" },
+        { "name": "Nasigoreng", "price": "MVR 80" },
+        { "name": "Valhomas Rice", "price": "MVR 60" }
+      ]
+    },
+    {
+      "category": "Pizza",
+      "items": [
+        { "name": "BBQ Pizza", "price": "150" },
+        { "name": "Chicken Salami Pizza", "price": "155" },
+        { "name": "Beef Salami Pizza", "price": "155" },
+        { "name": "Chicken Pepperoni Pizza", "price": "155" },
+        { "name": "Beef Pepperoni Pizza", "price": "155" },
+        { "name": "Tuna & Pepperoni Pizza", "price": "155" },
+        { "name": "Chicken Pizza", "price": "145" },
+        { "name": "Beef Pizza", "price": "145" },
+        { "name": "Tandoori Chicken Pizza", "price": "155" },
+        { "name": "Chicken & Mushroom Pizza", "price": "155" },
+        { "name": "Beef & Mushroom Pizza", "price": "155" },
+        { "name": "3 Cheese Pizza", "price": "165" }
+      ]
+    },
+    {
+      "category": "Fast Food & Burgers",
+      "items": [
+        { "name": "Chicken Burger", "price": "MVR 75" },
+        { "name": "Beef Burger", "price": "MVR 80" },
+        { "name": "Crispy Chicken Burger", "price": "MVR 75" }
+      ]
+    },
+    {
+      "category": "Sandwiches & Quick Bites",
+      "items": [
+        { "name": "Club Sandwich", "price": "65" },
+        { "name": "Cheese Sandwich", "price": "40" },
+        { "name": "Chicken Sandwich", "price": "35" },
+        { "name": "Tuna Sandwich", "price": "30" },
+        { "name": "Bacon Sandwich", "price": "35" },
+        { "name": "Chicken & Chips", "price": "60" },
+        { "name": "Hash Browns", "price": "35" },
+        { "name": "Sausage", "price": "8" },
+        { "name": "Fried Egg", "price": "15" },
+        { "name": "Scrambled Egg", "price": "15" },
+        { "name": "Mix Omelette", "price": "35" },
+        { "name": "Cheese Omelette", "price": "40" }
+      ]
+    },
+    {
+      "category": "Desserts",
+      "items": [
+        { "name": "Magnum Pudding", "price": "55" },
+        { "name": "Tres Leches", "price": "55" },
+        { "name": "Oreo Dessert", "price": "55" }
+      ]
+    },
+    {
+      "category": "Add Ons",
+      "items": [
+        { "name": "Large French Fries", "price": "70" },
+        { "name": "Fried Chicken Stick", "price": "65" },
+        { "name": "Deviled Sausage", "price": "35" },
+        { "name": "Chicken Rolls", "price": "35" },
+        { "name": "Sausage Omelette", "price": "35" },
+        { "name": "Parata", "price": "15" },
+        { "name": "Roshi", "price": "3" },
+        { "name": "Plain Rice", "price": "15" },
+        { "name": "Noodles", "price": "15" },
+        { "name": "Seasoned Noodles", "price": "20" },
+        { "name": "Sun Quick Juice", "price": "25" }
+      ]
+    },
+    {
+      "category": "Drinks",
+      "items": [
+        { "name": "Vanilla Oreo Crush", "price": "85", "description": "Creamy vanilla ice cream blended with crushed Oreo cookies." },
+        { "name": "Ferrero Rocher Mocha", "price": "75", "description": "Iced mocha mixed with chocolate, coffee, milk, and Ferrero Rocher pieces." },
+        { "name": "Matcha Strawberry", "price": "75", "description": "Creamy latte with green tea matcha, fresh strawberry, and milk." },
+        { "name": "Ice Coffee Delight", "price": "55", "description": "Refreshing iced coffee with milk and creamy sweetness." },
+        { "name": "Blue Sunset Fizz", "price": "70" },
+        { "name": "Iced Coffee Delight", "price": "55" },
+        { "name": "Iced Mocha Swirl", "price": "60" },
+        { "name": "Nescafe Black", "price": "8" },
+        { "name": "Cappuccino", "price": "45" },
+        { "name": "Nescafe Milk", "price": "17" },
+        { "name": "Espresso", "price": "35" },
+        { "name": "Choco Ice Tea", "price": "45" },
+        { "name": "Frozen Milo Chill", "price": "55" },
+        { "name": "Choco Cream Cold Brew", "price": "55" },
+        { "name": "Black Gold Coffee", "price": "35" },
+        { "name": "Velvet Milo Latte", "price": "65" },
+        { "name": "Americano", "price": "35" },
+        { "name": "Mocha Bliss", "price": "60" },
+        { "name": "Creamy Milk Coffee", "price": "40" },
+        { "name": "Choco Coffee Fusion", "price": "60" },
+        { "name": "Ferrero Rocher Iced Mocha", "price": "75" },
+        { "name": "Strawberry Cream Chill", "price": "75" },
+        { "name": "Choco-Mint Dream", "price": "70" },
+        { "name": "Tropical Watermelon Cooler", "price": "75" },
+        { "name": "Blackcurrant Passion Punch", "price": "75" },
+        { "name": "Blueberry Cream Latte", "price": "70" },
+        { "name": "Berry Mint Sparkler", "price": "75" }
+      ]
+    },
+    {
+      "category": "Boba",
+      "items": [
+        { "name": "Strawberry Cream Boba", "price": "70" },
+        { "name": "Brown Sugar Boba Milk", "price": "75" },
+        { "name": "Thai Milk Tea With Boba", "price": "75" }
+      ]
+    },
+    {
+      "category": "Milkshake",
+      "items": [
+        { "name": "Nutty Chocolate Royale", "price": "85" },
+        { "name": "Strawberry Bliss Shake", "price": "75" },
+        { "name": "Vanilla Oreo Crush", "price": "85" },
+        { "name": "Triple Ice Cream Fantasy", "price": "85" },
+        { "name": "Cookies & Cream Dream", "price": "99" },
+        { "name": "Choco Overloaded Shake", "price": "99" },
+        { "name": "Snickers Caramel Crunch", "price": "95" }
+      ]
+    },
+    {
+      "category": "Tea",
+      "items": [
+        { "name": "Thai Tea Float", "price": "35" },
+        { "name": "Matcha Milk Tea", "price": "60" },
+        { "name": "Matcha Strawberry Latte", "price": "40" },
+        { "name": "Iced Chocolate Milk Tea", "price": "60" }
+      ]
+    },
+    {
+      "category": "BR Ice Cream",
+      "items": [
+        { "name": "Chocolate Mousse Royale", "price": "45" },
+        { "name": "Bavarian Chocolate", "price": "45" },
+        { "name": "Mississippi Mud", "price": "45" },
+        { "name": "Cotton Candy", "price": "45" },
+        { "name": "Three Cheers Chocolate", "price": "45" },
+        { "name": "Alphonso Mango", "price": "45" },
+        { "name": "Dutch Chocolate", "price": "45" },
+        { "name": "Naughty Nutella", "price": "45" },
+        { "name": "Belgian Bliss", "price": "45" },
+        { "name": "Boba Ice Cream Sundae", "price": "55" }
+      ]
+    },
+    {
+      "category": "Mojitos",
+      "items": [
+        { "name": "Strawberry", "price": "65" },
+        { "name": "Green Mint Classic", "price": "65" },
+        { "name": "Tropical Passion", "price": "65" },
+        { "name": "Blackcurrant", "price": "65" },
+        { "name": "Sweet & Sour", "price": "65" },
+        { "name": "Blueberry", "price": "65" },
+        { "name": "Grenadine Sunset", "price": "65" },
+        { "name": "Frozen Milo Chill", "price": "65" },
+        { "name": "Blue Curacao", "price": "65" },
+        { "name": "Berry Burst", "price": "65" },
+        { "name": "Watermelon", "price": "65" },
+        { "name": "Guava", "price": "65" },
+        { "name": "Pomegranate", "price": "65" },
+        { "name": "Cucumber", "price": "65" },
+        { "name": "Mango", "price": "65" },
+        { "name": "Blackberry", "price": "65" }
+      ]
+    },
+    {
+      "category": "BR Shakes",
+      "items": [
+        { "name": "Chocolate Mousse Royale", "price": "80" },
+        { "name": "Bavarian Chocolate", "price": "80" },
+        { "name": "Mississippi Mud", "price": "80" },
+        { "name": "Cotton Candy", "price": "80" },
+        { "name": "Three Cheers Chocolate", "price": "80" },
+        { "name": "Alphonso Mango", "price": "80" },
+        { "name": "Dutch Chocolate", "price": "80" },
+        { "name": "Naughty Nutella", "price": "80" },
+        { "name": "Belgian Bliss", "price": "80" }
+      ]
+    }
+  ],
+  "contact_info": {
+    "phone": "+960 9919808",
+    "social_media": {
+      "facebook": "@AVEO Café & lounge",
+      "instagram": "@AVEO_cafe_lounge",
+      "tiktok": "@av30cafe"
+    }
+  }
+}

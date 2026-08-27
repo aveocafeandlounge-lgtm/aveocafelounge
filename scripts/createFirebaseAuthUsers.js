@@ -2,17 +2,17 @@ import https from 'node:https';
 import { URLSearchParams } from 'node:url';
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyDxAQ1cQD7mxyQ_4qBb04mJZNeNXhD_6Ec',
-  authDomain: 'loavashihubcafe.firebaseapp.com',
-  projectId: 'loavashihubcafe',
-  storageBucket: 'loavashihubcafe.firebasestorage.app',
-  messagingSenderId: '997803453794',
-  appId: '1:997803453794:web:5ab8b39c7e17917929d03b',
+  apiKey: 'AIzaSyAbWWDV00qaN5lyBygs5xPrjkm_8dzYEss',
+  authDomain: 'aveocafe-lounge.firebaseapp.com',
+  projectId: 'aveocafe-lounge',
+  storageBucket: 'aveocafe-lounge.firebasestorage.app',
+  messagingSenderId: '83831360825',
+  appId: '1:83831360825:web:ff45923cd1adc1612fece8',
 };
 
 const users = [
-  { email: 'admin@loavashi.com', password: 'Admin123' },
-  { email: 'cashier@loavashi.com', password: 'Cashier123' },
+  { email: 'aveocafeandlounge@gmail.com', password: 'Aveo@123' },
+  { email: 'cashier@aveocafe-lounge.com', password: 'Aveo@123' },
 ];
 
 function fetchJson(options, body) {

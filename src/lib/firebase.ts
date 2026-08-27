@@ -3,13 +3,13 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyDxAQ1cQD7mxyQ_4qBb04mJZNeNXhD_6Ec',
-  authDomain: 'loavashihubcafe.firebaseapp.com',
-  projectId: 'loavashihubcafe',
-  storageBucket: 'loavashihubcafe.firebasestorage.app',
-  messagingSenderId: '997803453794',
-  appId: '1:997803453794:web:5ab8b39c7e17917929d03b',
-  measurementId: 'G-GTFWHSZ9PX',
+  apiKey: 'AIzaSyAbWWDV00qaN5lyBygs5xPrjkm_8dzYEss',
+  authDomain: 'aveocafe-lounge.firebaseapp.com',
+  projectId: 'aveocafe-lounge',
+  storageBucket: 'aveocafe-lounge.firebasestorage.app',
+  messagingSenderId: '83831360825',
+  appId: '1:83831360825:web:ff45923cd1adc1612fece8',
+  measurementId: 'G-K0GL62TQVS',
 };
 
 export const hasFirebaseConfig = Boolean(

@@ -6,7 +6,7 @@ import { formatMVR } from '../lib/mvr';
 import { loadCollection, saveDocument, deleteDocument } from '../lib/firestore';
 import type { Bill } from '../types';
 
-const logo = '/logo.jpeg';
+const logo = '/logo.jpg';
 
 export default function BillDetailsPage() {
   const { billId } = useParams();
@@ -277,8 +277,8 @@ export default function BillDetailsPage() {
           <div className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
             {/* Print Header - Only visible when printing */}
             <div className="hidden print:block print:mb-6 print:text-center">
-              <img src={logo} alt="Loavashi Hub" className="print:mx-auto print:h-16 print:w-16 print:rounded-full print:border" />
-              <h1 className="print:mt-2 print:text-xl print:font-bold print:text-slate-900">Loavashi Hub</h1>
+              <img src={logo} alt="Aveo Cafe' & Lounge" className="print:mx-auto print:h-16 print:w-16 print:rounded-full print:border" />
+              <h1 className="print:mt-2 print:text-xl print:font-bold print:text-slate-900">Aveo Cafe' & Lounge</h1>
               <p className="print:text-sm print:text-slate-600">Cafe & Restaurant</p>
             </div>
 

@@ -1,15 +1,15 @@
-# Loavashi Hub User Manual
+# Aveo Cafe' & Lounge User Manual
 
 ## Overview
-Loavashi Hub is a cafe and restaurant management system with separate admin and cashier workflows. The app includes POS billing, inventory tracking, purchase order management, recipe tracking, assets, expenses, and reports.
+Aveo Cafe' & Lounge is a cafe and restaurant management system with separate admin and cashier workflows. The app includes POS billing, inventory tracking, purchase order management, recipe tracking, assets, expenses, and reports.
 
 ## Access and Login
 
 1. Open the app in your browser.
 2. Use the login page to sign in.
 3. Demo accounts:
-   - Admin: `loavashihub@gmail.com` / `Loavashi123`
-   - Cashier: `cashier@loavashi.com` / `cashier123`
+   - Admin: `aveocafeandlounge@gmail.com` / `Aveo@123`
+   - Cashier: `cashier@aveocafe-lounge.com` / `Aveo@123`
 
 ## Navigation
 
@@ -88,7 +88,7 @@ The application includes:
 
 - a web manifest at `/manifest.json`
 - a service worker at `/service-worker.js`
-- `public/logo.jpeg` used as the PWA icon
+- `public/logo.jpg` used as the PWA icon
 
 ### Install on desktop or mobile
 
@@ -103,7 +103,7 @@ Once installed, the app caches the shell and manifest assets. If the device goes
 ## Troubleshooting
 
 - If the app does not install, verify the manifest and service worker files are present.
-- If the PWA icon does not appear, make sure `public/logo.jpeg` is available and referenced in `manifest.json`.
+- If the PWA icon does not appear, make sure `public/logo.jpg` is available and referenced in `manifest.json`.
 - If receipt printing does not work, confirm your browser supports `window.print()`.
 
 ## Deployment

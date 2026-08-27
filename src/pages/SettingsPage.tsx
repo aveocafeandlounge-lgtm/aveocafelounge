@@ -7,10 +7,10 @@ import type { AppSettings } from '../types';
 
 const defaultSettings: AppSettings = {
   id: 'default',
-  restaurantName: 'Loavashi Hub Cafe',
+  restaurantName: "Aveo Cafe' & Lounge",
   currency: 'MVR',
   taxRate: 5,
-  receiptFooter: 'Thank you for visiting Loavashi Hub. Please visit again!',
+  receiptFooter: "Thank you for visiting Aveo Cafe' & Lounge. Please visit again!",
   supportEmail: 'support@loavashihub.com',
   useDefaultTaxRate: false,
   defaultTaxRate: 5,
